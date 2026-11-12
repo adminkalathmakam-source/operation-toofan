@@ -17,3 +17,4 @@ mkdir -p frontend/dist/pay
 cp frontend/dist/index.html frontend/dist/pay/index.html
 
 echo "===> [OK] Build completed successfully!"
+
