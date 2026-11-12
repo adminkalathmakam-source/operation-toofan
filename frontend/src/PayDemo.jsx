@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   ArrowRight, BadgeAlert, Banknote, Check, CheckCircle2, ChevronRight,
-  CircleHelp, Copy, Gift, Info, Lock, MapPin, Mic, QrCode, RefreshCw,
+  CircleHelp, Copy, Gift, Info, Lock, MapPin, Mic, QrCode, RefreshCw, RotateCcw,
   Search, Shield, ShieldCheck, Smartphone, Sparkles, Store, Tag,
   Volume2, VolumeX, Wallet, X, Zap
 } from "lucide-react";
@@ -110,6 +110,35 @@ export default function PayDemo({ embedded = false }) {
       setBaseline("200");
       setObserved("900");
     }
+  }
+
+  async function resetAllTransactions() {
+    if (typeof sounds.playReset === "function") {
+      sounds.playReset();
+    } else {
+      sounds.playClick();
+    }
+    const emptyTrace = {
+      nodes: [],
+      edges: [],
+      paths: [],
+      candidates: [],
+      merchant_alerts: [],
+      excluded_p2m_count: 0,
+      transaction_count: 0,
+      notice: "All synthetic transactions and paths have been reset.",
+    };
+    try {
+      localStorage.setItem(BRIDGE_KEY, JSON.stringify({
+        createdAt: new Date().toISOString(),
+        transactions: [],
+        merchantObservations: [],
+        trace: emptyTrace,
+      }));
+      await fetch(`${API}/api/reset`, { method: "POST" });
+    } catch {}
+    setStatus("✨ All transactions have been reset to zero.");
+    setTimeout(() => setStatus(""), 4000);
   }
 
   async function executeBurst() {
@@ -392,8 +421,25 @@ export default function PayDemo({ embedded = false }) {
               {p.label}
             </button>
           ))}
+          <button
+            className="preset-chip preset-reset"
+            onClick={resetAllTransactions}
+            title="Reset and clear all transactions"
+          >
+            <RotateCcw size={12} />
+            <span>Reset Transactions</span>
+          </button>
         </div>
       </div>
+
+      {status && (
+        <div className="gpay-top-status-toast">
+          <span>{status}</span>
+          <button className="btn-close-toast" onClick={() => setStatus("")}>
+            <X size={13} />
+          </button>
+        </div>
+      )}
 
       {/* MAIN CONTAINER */}
       <div className="gpay-scrollable-body">

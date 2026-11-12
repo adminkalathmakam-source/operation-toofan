@@ -3,7 +3,7 @@ import {
   Activity, ArrowRight, BadgeAlert, Banknote, Check, CheckCircle2, ChevronRight,
   Copy, Download, Eye, FileDown, FileSpreadsheet, Fingerprint, FlaskConical,
   GitBranch, HeartHandshake, History, Landmark, Layers, Lock, MapPin, Menu,
-  Pause, Play, QrCode, Radio, RefreshCw, Search, Shield, ShieldAlert, ShieldCheck,
+  Pause, Play, QrCode, Radio, RefreshCw, RotateCcw, Search, Shield, ShieldAlert, ShieldCheck,
   Smartphone, Sparkles, Store, Trash2, Upload, Volume2, VolumeX, Wallet, X, Zap
 } from "lucide-react";
 import { saveEvidence, getAllEvidence, deleteEvidence } from "./evidenceStore";
@@ -153,7 +153,7 @@ function money(value) {
 // ----------------------------------------------------
 // OFFICIAL TOPOLOGY GRAPH VISUALIZER
 // ----------------------------------------------------
-function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, activeHighlightEdge }) {
+function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, activeHighlightEdge, onLoadDemo }) {
   const [minAmount, setMinAmount] = useState(0);
   const [animateParticles, setAnimateParticles] = useState(true);
 
@@ -303,6 +303,23 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
           <span className="tier-badge-label purple"><span className="tier-dot purple" /> STEP 4 · FINAL CASHOUT HUB</span>
         </div>
 
+        {nodes.length === 0 ? (
+          <div className="empty-graph-state-box">
+            <div className="empty-glow-disc">
+              <RotateCcw size={30} className="empty-reset-icon" />
+            </div>
+            <h4>Money Flow Map is Reset (0 Transactions)</h4>
+            <p>
+              All transactions were reset to a clean slate. You can record a new payment in Google Pay or choose a test pattern above.
+            </p>
+            {onLoadDemo && (
+              <button className="btn-load-demo-inline" onClick={onLoadDemo}>
+                <Play size={13} />
+                <span>Load Sample Money Trail</span>
+              </button>
+            )}
+          </div>
+        ) : (
         <svg
           viewBox="0 0 830 310"
           className="topology-svg-element"
@@ -566,6 +583,7 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
             );
           })}
         </svg>
+        )}
       </div>
 
       {/* FOOTER LEGEND */}
@@ -1011,7 +1029,7 @@ function OfficialEvidenceWizard() {
 // ----------------------------------------------------
 // SIMPLIFIED TRANSACTION FORENSICS LEDGER
 // ----------------------------------------------------
-function OfficialTransactionLedger({ transactions, privacy }) {
+function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo }) {
   const [filterQuery, setFilterQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState("all");
 
@@ -1083,6 +1101,12 @@ function OfficialTransactionLedger({ transactions, privacy }) {
         </div>
 
         <div className="ledger-export-actions">
+          {onReset && (
+            <button className="btn-export-file danger-reset" onClick={onReset} title="Reset all transactions to zero">
+              <RotateCcw size={14} />
+              <span>Reset All</span>
+            </button>
+          )}
           <button className="btn-export-file" onClick={exportCSV} title="Export CSV File">
             <FileSpreadsheet size={14} />
             <span>Export CSV</span>
@@ -1107,7 +1131,26 @@ function OfficialTransactionLedger({ transactions, privacy }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((tx, idx) => {
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="empty-table-cell">
+                  <div className="empty-ledger-box">
+                    <div className="empty-ledger-icon">
+                      <Landmark size={24} />
+                    </div>
+                    <b>No Transactions Recorded</b>
+                    <p>All transactions have been reset to 0. Send a payment in Google Pay or load test data.</p>
+                    {onLoadDemo && (
+                      <button className="btn-empty-load-demo" onClick={onLoadDemo}>
+                        <Play size={13} />
+                        <span>Load Sample Transactions</span>
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ) : (
+            filtered.map((tx, idx) => {
               const senderLabel = privacy && tx.sender.startsWith("STUDENT") ? "STUDENT •••" : tx.sender;
               return (
                 <tr key={`${tx.sender}-${tx.receiver}-${idx}`}>
@@ -1133,7 +1176,8 @@ function OfficialTransactionLedger({ transactions, privacy }) {
                   </td>
                 </tr>
               );
-            })}
+            })
+            )}
           </tbody>
         </table>
       </div>
@@ -1155,10 +1199,53 @@ export default function App() {
   const [activeScenario, setActiveScenario] = useState("burst");
   const [simulating, setSimulating] = useState(false);
   const [simStepIndex, setSimStepIndex] = useState(0);
+  const [resetToast, setResetToast] = useState(false);
 
   const activeScript = SIMULATION_SCRIPTS[activeScenario] || SIMULATION_SCRIPTS.burst;
   const currentScriptStep = activeScript[simStepIndex] || null;
   const activeHighlightEdge = currentScriptStep?.edgeId || null;
+
+  async function handleResetTransactions() {
+    if (typeof sounds.playReset === "function") {
+      sounds.playReset();
+    } else {
+      sounds.playClick();
+    }
+    const emptyTrace = {
+      nodes: [],
+      edges: [],
+      paths: [],
+      candidates: [],
+      merchant_alerts: [],
+      excluded_p2m_count: 0,
+      transaction_count: 0,
+      notice: "All synthetic transactions and paths have been reset.",
+    };
+    const emptyPayload = {
+      createdAt: new Date().toISOString(),
+      transactions: [],
+      merchantObservations: [],
+      trace: emptyTrace,
+    };
+    try {
+      localStorage.setItem(BRIDGE_KEY, JSON.stringify(emptyPayload));
+      await fetch(`${API}/api/reset`, { method: "POST" });
+    } catch {}
+    setTransactions([]);
+    setTrace(emptyTrace);
+    setSelectedNode(null);
+    setSimulating(false);
+    setSimStepIndex(0);
+    setActiveScenario(null);
+    setResetToast(true);
+    setTimeout(() => setResetToast(false), 4500);
+  }
+
+  function handleRestoreDemo() {
+    sounds.playClick();
+    handleSelectScenario("burst");
+    setResetToast(false);
+  }
 
   useEffect(() => {
     if (!simulating) return;
@@ -1244,12 +1331,25 @@ export default function App() {
     function loadPayScenario(raw) {
       try {
         const payload = JSON.parse(raw ?? "null");
-        if (!Array.isArray(payload?.transactions) || payload.transactions.length === 0) return;
-        setTransactions(payload.transactions);
-        if (payload.trace) {
-          setTrace(payload.trace);
-        } else {
-          void broadcast(payload.transactions, payload.merchantObservations ?? []);
+        if (!payload) return;
+        if (Array.isArray(payload?.transactions)) {
+          setTransactions(payload.transactions);
+          if (payload.trace) {
+            setTrace(payload.trace);
+          } else if (payload.transactions.length > 0) {
+            void broadcast(payload.transactions, payload.merchantObservations ?? []);
+          } else {
+            setTrace({
+              nodes: [],
+              edges: [],
+              paths: [],
+              candidates: [],
+              merchant_alerts: [],
+              excluded_p2m_count: 0,
+              transaction_count: 0,
+              notice: "All synthetic transactions and paths have been reset.",
+            });
+          }
         }
       } catch {}
     }
@@ -1331,6 +1431,14 @@ export default function App() {
                 <span>{scenario.label}</span>
               </button>
             ))}
+            <button
+              className="scenario-btn-item reset-btn"
+              onClick={handleResetTransactions}
+              title="Reset all transactions to zero"
+            >
+              <RotateCcw size={12} />
+              <span>Reset Transactions</span>
+            </button>
           </div>
 
           <div className="sidebar-footer-box">
@@ -1362,6 +1470,16 @@ export default function App() {
             </div>
 
             <div className="topbar-right-zone">
+              {/* RESET TRANSACTIONS BUTTON */}
+              <button
+                className="btn-topbar-reset"
+                onClick={handleResetTransactions}
+                title="Reset all transactions to zero"
+              >
+                <RotateCcw size={14} />
+                <span>Reset Transactions</span>
+              </button>
+
               {/* STUDENT PRIVACY TOGGLE */}
               <div className="privacy-mode-pill">
                 <ShieldCheck size={16} className={privacy ? "text-emerald" : "text-muted"} />
@@ -1392,6 +1510,27 @@ export default function App() {
 
           {/* SCROLLABLE VIEWPORT CONTENT */}
           <div className="official-content-scrollable">
+            {resetToast && (
+              <div className="floating-reset-toast">
+                <div className="toast-content-col">
+                  <div className="toast-main-line">
+                    <RotateCcw size={15} className="toast-icon-spin" />
+                    <b>All transactions have been reset!</b>
+                  </div>
+                  <small>Money trails, transaction ledger, and accounts have been cleared to 0.</small>
+                </div>
+                <div className="toast-actions-row">
+                  <button className="btn-toast-reload" onClick={handleRestoreDemo}>
+                    <Play size={12} />
+                    <span>Reload Demo Data</span>
+                  </button>
+                  <button className="btn-toast-dismiss" onClick={() => setResetToast(false)}>
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {privacy && (
               <div className="rehab-banner-notice">
                 <HeartHandshake size={17} />
@@ -1412,13 +1551,23 @@ export default function App() {
                       <span className="strip-badge"><Zap size={13} /> TEST PATTERNS</span>
                       <span className="strip-hint">Pick a pattern or click to watch the money move step-by-step:</span>
                     </div>
-                    <button
-                      className={`btn-simulation-toggle ${simulating ? "running" : ""}`}
-                      onClick={toggleSimulation}
-                    >
-                      {simulating ? <Pause size={14} /> : <Play size={14} />}
-                      <span>{simulating ? "Pause Walkthrough" : "▶ Watch Money Move"}</span>
-                    </button>
+                    <div className="strip-actions-cluster">
+                      <button
+                        className="btn-strip-reset"
+                        onClick={handleResetTransactions}
+                        title="Reset all transactions to zero"
+                      >
+                        <RotateCcw size={13} />
+                        <span>Reset All</span>
+                      </button>
+                      <button
+                        className={`btn-simulation-toggle ${simulating ? "running" : ""}`}
+                        onClick={toggleSimulation}
+                      >
+                        {simulating ? <Pause size={14} /> : <Play size={14} />}
+                        <span>{simulating ? "Pause Walkthrough" : "▶ Watch Money Move"}</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="scenario-chips-row">
@@ -1526,6 +1675,7 @@ export default function App() {
                   selectedNode={selectedNode}
                   onSelectNode={setSelectedNode}
                   activeHighlightEdge={activeHighlightEdge}
+                  onLoadDemo={handleRestoreDemo}
                 />
 
                 {/* SELECTED NODE DOSSIER FLYOUT */}
@@ -1675,6 +1825,8 @@ export default function App() {
                 <OfficialTransactionLedger
                   transactions={transactions}
                   privacy={privacy}
+                  onReset={handleResetTransactions}
+                  onLoadDemo={handleRestoreDemo}
                 />
               </div>
             )}

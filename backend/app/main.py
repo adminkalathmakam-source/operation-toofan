@@ -79,6 +79,21 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "mode": "synthetic-demo"}
 
 
+@app.post("/api/reset")
+async def reset_data() -> dict:
+    return {
+        "status": "reset",
+        "nodes": [],
+        "edges": [],
+        "paths": [],
+        "candidates": [],
+        "merchant_alerts": [],
+        "excluded_p2m_count": 0,
+        "transaction_count": 0,
+        "notice": "All synthetic transactions and paths have been reset.",
+    }
+
+
 def _read_transactions(request: TraceRequest) -> pd.DataFrame:
     if request.csv_data is not None:
         try:
