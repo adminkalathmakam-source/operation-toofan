@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AlertCircle, ArrowRight, BadgeAlert, Banknote, Check, CheckCircle2,
-  ChevronRight, Coins, DollarSign, Eye, GitBranch, Landmark, Loader2, Plus,
+  ChevronRight, Coins, DollarSign, Eye, GitBranch, Landmark, Loader2, MapPin, Plus,
   RotateCcw, ShieldCheck, Sparkles, Store, Trash2, User, Users, Volume2, Wallet, Zap
 } from "lucide-react";
 import { sounds } from "./soundEffects";
@@ -20,6 +20,7 @@ export default function CashLaunderingDesk({
   onResetTransactions = null,
   onNavigateTab = null,
   privacy = false,
+  initialShop = null,
 }) {
   // Mode switcher: "instant" (1-click direct flow) | "accumulator" (collect from students until ₹1000)
   const [deskMode, setDeskMode] = useState("instant");
@@ -27,7 +28,13 @@ export default function CashLaunderingDesk({
   // Mode A: Direct Cash Flow Form State
   const [student, setStudent] = useState("STUDENT-014");
   const [provider, setProvider] = useState("PROVIDER-HARSH");
-  const [shop, setShop] = useState("FORT-ROAD-BAKERY");
+  const [shop, setShop] = useState(initialShop || "FORT-ROAD-BAKERY");
+
+  useEffect(() => {
+    if (initialShop) {
+      setShop(initialShop);
+    }
+  }, [initialShop]);
   const [altAcc, setAltAcc] = useState("ALT-ACC-7A");
   const [mainAcc, setMainAcc] = useState("MAIN-CASHOUT-HUB");
   const [amount, setAmount] = useState("1000");
@@ -470,7 +477,20 @@ export default function CashLaunderingDesk({
 
               <div className="fields-dual-row">
                 <div className="input-field-col">
-                  <label className="field-label-bold">3. Local Shop / Bakery</label>
+                  <div className="field-label-with-action">
+                    <label className="field-label-bold">3. Local Shop / Bakery</label>
+                    {onNavigateTab && (
+                      <button
+                        type="button"
+                        className="btn-field-mini-link"
+                        onClick={() => onNavigateTab("scanner")}
+                        title="Scan nearby locations & bakeries for sudden cash jumps"
+                      >
+                        <MapPin size={11} />
+                        <span>AI Scan Shops</span>
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="text"
                     className="clean-input"

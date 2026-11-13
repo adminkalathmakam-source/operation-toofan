@@ -10,6 +10,7 @@ import { saveEvidence, getAllEvidence, deleteEvidence } from "./evidenceStore";
 import { sounds } from "./soundEffects";
 import PayDemo from "./PayDemo.jsx";
 import CashLaunderingDesk from "./CashLaunderingDesk.jsx";
+import LocationAiScanner from "./LocationAiScanner.jsx";
 
 const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
 const BRIDGE_KEY = "toofan-shield-demo-scenario";
@@ -1518,7 +1519,8 @@ export default function App() {
     return initialTrace;
   });
 
-  const [activeTab, setActiveTab] = useState("overview"); // overview | gpay | evidence | ledger
+  const [activeTab, setActiveTab] = useState("overview"); // overview | scanner | cash | gpay | evidence | ledger
+  const [selectedLaunderingShop, setSelectedLaunderingShop] = useState("FORT-ROAD-BAKERY");
   const [selectedNode, setSelectedNode] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -1854,6 +1856,7 @@ export default function App() {
 
   const navItems = [
     { key: "overview", label: "Money Flow Tracker", icon: Activity },
+    { key: "scanner", label: "AI Location & Shop Scanner", icon: MapPin },
     { key: "cash", label: "Cash to Shop Laundering", icon: Banknote },
     { key: "gpay", label: "Google Pay Simulator", icon: Smartphone },
     { key: "evidence", label: "Evidence & Proof Vault", icon: ShieldCheck },
@@ -1986,6 +1989,7 @@ export default function App() {
                 <ChevronRight size={13} />
                 <b>
                   {activeTab === "overview" && "Live Money Flow Map"}
+                  {activeTab === "scanner" && "AI Location & Sudden Cash Jump Radar"}
                   {activeTab === "cash" && "Cash to Shop Laundering Desk"}
                   {activeTab === "gpay" && "Google Pay Simulator"}
                   {activeTab === "evidence" && "Evidence & Proof Vault"}
@@ -2031,6 +2035,16 @@ export default function App() {
                   <span className="toggle-slider-circle" />
                 </button>
               </div>
+
+              {/* QUICK AI LOCATION SCANNER SHORTCUT BUTTON */}
+              <button
+                className="btn-open-scanner-top desktop-only-btn"
+                onClick={() => { sounds.playClick(); setActiveTab("scanner"); }}
+                title="AI Location & Sudden Cash Jump Scanner"
+              >
+                <MapPin size={14} />
+                <span className="topbar-btn-text">AI Location Scanner</span>
+              </button>
 
               {/* QUICK CASH DESK SHORTCUT BUTTON */}
               <button
@@ -2347,7 +2361,21 @@ export default function App() {
                         <Store size={17} />
                         <h4>Shop Daily Sales & Cash Review</h4>
                       </div>
-                      <span className="demo-rule-badge">4x JUMP DETECTOR</span>
+                      <div className="variance-header-actions">
+                        <button
+                          className="btn-launch-geo-scanner"
+                          onClick={() => {
+                            sounds.playClick();
+                            setActiveTab("scanner");
+                          }}
+                          title="Open full AI Geo-Location & Sudden Cash Jump Radar"
+                        >
+                          <MapPin size={13} />
+                          <span>Select Location & Scan Map</span>
+                          <ArrowRight size={12} />
+                        </button>
+                        <span className="demo-rule-badge">4x JUMP DETECTOR</span>
+                      </div>
                     </div>
 
                     <div className="variance-rows-list">
@@ -2390,6 +2418,21 @@ export default function App() {
               </div>
             )}
 
+            {/* TAB: AI LOCATION & SHOP SCANNER */}
+            {activeTab === "scanner" && (
+              <div className="scanner-page-wrapper">
+                <LocationAiScanner
+                  onSelectMerchantForLaundering={(merchantId) => {
+                    setSelectedLaunderingShop(merchantId);
+                  }}
+                  onNavigateTab={(tab) => {
+                    sounds.playClick();
+                    setActiveTab(tab);
+                  }}
+                />
+              </div>
+            )}
+
             {/* TAB 2: CASH TO SHOP LAUNDERING DESK */}
             {activeTab === "cash" && (
               <div className="cash-desk-page-wrapper">
@@ -2402,6 +2445,7 @@ export default function App() {
                     setActiveTab(tab);
                   }}
                   privacy={privacy}
+                  initialShop={selectedLaunderingShop}
                 />
               </div>
             )}
@@ -2466,6 +2510,7 @@ export default function App() {
             </div>
             <span className="bottom-nav-label">
               {key === "overview" && "Money Flow"}
+              {key === "scanner" && "AI Scanner"}
               {key === "cash" && "Cash Desk"}
               {key === "gpay" && "Google Pay"}
               {key === "evidence" && "Proof Vault"}
