@@ -419,6 +419,19 @@ export default function PayDemo({
             <Store size={15} />
             <span>Business & Cash Register</span>
           </button>
+          <button
+            className="seg-pill cash-desk-link"
+            onClick={() => {
+              sounds.playClick();
+              if (typeof onNavigateTab === "function") {
+                onNavigateTab("cash");
+              }
+            }}
+            title="Open Cash & Shop Laundering Desk"
+          >
+            <Banknote size={15} />
+            <span>💵 Cash to Shop Desk</span>
+          </button>
         </div>
 
         {/* 1-CLICK TEST SCENARIO CHIPS */}

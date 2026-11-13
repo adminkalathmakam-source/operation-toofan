@@ -9,6 +9,7 @@ import {
 import { saveEvidence, getAllEvidence, deleteEvidence } from "./evidenceStore";
 import { sounds } from "./soundEffects";
 import PayDemo from "./PayDemo.jsx";
+import CashLaunderingDesk from "./CashLaunderingDesk.jsx";
 
 const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
 const BRIDGE_KEY = "toofan-shield-demo-scenario";
@@ -270,6 +271,17 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
         icon: "🏪",
       };
     }
+    const isProvider = node.id.includes("PROVIDER") || node.id.includes("HANDLER") || node.id.includes("AGENT");
+    if (isProvider) {
+      return {
+        fill: "url(#providerGrad)",
+        stroke: "#f59e0b",
+        glow: "url(#glowAmber)",
+        textFill: "#d97706",
+        badgeBg: "#fef3c7",
+        icon: "🎒",
+      };
+    }
     return {
       fill: "url(#studentGrad)",
       stroke: "#0284c7",
@@ -375,6 +387,13 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
               <stop offset="0%" stopColor="#ede9fe" />
               <stop offset="100%" stopColor="#ddd6fe" />
             </linearGradient>
+            <linearGradient id="providerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fef3c7" />
+              <stop offset="100%" stopColor="#fde68a" />
+            </linearGradient>
+            <filter id="glowAmber" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#f59e0b" floodOpacity="0.55" />
+            </filter>
 
             {/* Subtle Tier Column Glass Tints */}
             <linearGradient id="tierColStudent" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -1596,6 +1615,7 @@ export default function App() {
 
   const navItems = [
     { key: "overview", label: "Money Flow Tracker", icon: Activity },
+    { key: "cash", label: "Cash to Shop Laundering", icon: Banknote },
     { key: "gpay", label: "Google Pay Simulator", icon: Smartphone },
     { key: "evidence", label: "Evidence & Proof Vault", icon: ShieldCheck },
     { key: "ledger", label: "Payment Records", icon: Landmark },
@@ -1707,6 +1727,7 @@ export default function App() {
                 <ChevronRight size={13} />
                 <b>
                   {activeTab === "overview" && "Live Money Flow Map"}
+                  {activeTab === "cash" && "Cash to Shop Laundering Desk"}
                   {activeTab === "gpay" && "Google Pay Simulator"}
                   {activeTab === "evidence" && "Evidence & Proof Vault"}
                   {activeTab === "ledger" && "All Payment Records"}
@@ -1751,6 +1772,16 @@ export default function App() {
                   <span className="toggle-slider-circle" />
                 </button>
               </div>
+
+              {/* QUICK CASH DESK SHORTCUT BUTTON */}
+              <button
+                className="btn-open-cash-top"
+                onClick={() => { sounds.playClick(); setActiveTab("cash"); }}
+                title="Physical Cash to Shop Laundering"
+              >
+                <Banknote size={14} />
+                <span>Cash to Shop</span>
+              </button>
 
               {/* QUICK GPAY SHORTCUT BUTTON */}
               <button
@@ -2083,7 +2114,23 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 2: GPAY SIMULATOR */}
+            {/* TAB 2: CASH TO SHOP LAUNDERING DESK */}
+            {activeTab === "cash" && (
+              <div className="cash-desk-page-wrapper">
+                <CashLaunderingDesk
+                  transactions={transactions}
+                  onAddTransactions={handleAddTransactions}
+                  onResetTransactions={handleResetTransactions}
+                  onNavigateTab={(tab) => {
+                    sounds.playClick();
+                    setActiveTab(tab);
+                  }}
+                  privacy={privacy}
+                />
+              </div>
+            )}
+
+            {/* TAB 3: GPAY SIMULATOR */}
             {activeTab === "gpay" && (
               <div className="gpay-embedded-wrapper">
                 <PayDemo
