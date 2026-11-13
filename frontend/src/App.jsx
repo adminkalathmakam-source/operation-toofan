@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity, ArrowRight, BadgeAlert, Banknote, Check, CheckCircle2, ChevronRight,
+  Activity, AlertCircle, ArrowRight, BadgeAlert, Banknote, Camera, Check, CheckCircle2, ChevronRight,
   Copy, Download, Eye, FileDown, FileSpreadsheet, Fingerprint, FlaskConical,
   GitBranch, HeartHandshake, History, Landmark, Layers, Lock, MapPin, Menu,
   Pause, Play, QrCode, Radio, RefreshCw, RotateCcw, Search, Shield, ShieldAlert, ShieldCheck,
-  Smartphone, Sparkles, Store, Trash2, Upload, Volume2, VolumeX, Wallet, X, Zap
+  Smartphone, Sparkles, Store, SwitchCamera, Trash2, Upload, Volume2, VolumeX, Wallet, X, Zap
 } from "lucide-react";
 import { saveEvidence, getAllEvidence, deleteEvidence } from "./evidenceStore";
 import { sounds } from "./soundEffects";
@@ -673,9 +673,99 @@ function OfficialEvidenceWizard() {
   const [vaultEntries, setVaultEntries] = useState([]);
   const [activeSubTab, setActiveSubTab] = useState("capture");
 
+  // Camera states and refs
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState("environment");
+  const [cameraError, setCameraError] = useState("");
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
   useEffect(() => {
     loadVault();
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
+    };
   }, []);
+
+  async function startCamera(facing = cameraFacing) {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(true);
+    setCameraError("");
+
+    try {
+      const constraints = {
+        video: {
+          facingMode: facing,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      sounds.playClick();
+    } catch (err) {
+      console.warn("Primary camera access failed, trying fallback:", err);
+      try {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        streamRef.current = fallbackStream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = fallbackStream;
+          videoRef.current.play();
+        }
+      } catch (err2) {
+        setCameraError("Camera unavailable or permission denied. Please allow camera permissions in your browser or choose a photo file.");
+      }
+    }
+  }
+
+  function stopCamera() {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
+    setCameraError("");
+  }
+
+  function switchCameraFacing() {
+    sounds.playClick();
+    const nextFacing = cameraFacing === "environment" ? "user" : "environment";
+    setCameraFacing(nextFacing);
+    startCamera(nextFacing);
+  }
+
+  function capturePhoto() {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    sounds.playClick();
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      const filename = `photo-evidence-${Date.now()}.jpg`;
+      const previewUrl = URL.createObjectURL(blob);
+      await hashBlob(blob, filename, previewUrl);
+      captureGeolocation();
+      stopCamera();
+      sounds.playPaySuccess();
+      setNotice("Evidence photo captured and fingerprinted with SHA-256 and GPS timestamp.");
+    }, "image/jpeg", 0.92);
+  }
 
   async function loadVault() {
     try {
@@ -879,19 +969,42 @@ function OfficialEvidenceWizard() {
                 <div className="specimen-preview-box">
                   <img src={filePreview} alt="Specimen Thumbnail" className="specimen-thumbnail" />
                   <div className="specimen-name-badge">
-                    <b>{file}</b>
-                    <small>Fingerprinted locally on your device · 100% private</small>
+                    <div className="specimen-name-left">
+                      <b>{file}</b>
+                      <small>Fingerprinted locally on your device · 100% private</small>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-retake-camera"
+                      onClick={() => startCamera()}
+                      title="Retake photo with camera"
+                    >
+                      <Camera size={13} />
+                      <span>Retake</span>
+                    </button>
                   </div>
                 </div>
               ) : (
                 <div className="specimen-placeholder-prompt">
-                  <Upload size={28} className="text-google-blue" />
-                  <b>Upload Evidence Photo or File</b>
-                  <p>PNG, JPG, or SVG. Processed safely right inside your browser.</p>
+                  <div className="placeholder-icon-cluster">
+                    <Camera size={26} className="text-emerald" />
+                    <Upload size={24} className="text-google-blue" />
+                  </div>
+                  <b>Take a Live Photo or Upload Evidence File</b>
+                  <p>Snap evidence using your device camera or choose a photo file (PNG, JPG, SVG).</p>
                 </div>
               )}
 
               <div className="specimen-btn-row">
+                <button
+                  type="button"
+                  className="btn-specimen-camera"
+                  onClick={() => startCamera()}
+                  title="Open Camera & Snap Photo"
+                >
+                  <Camera size={15} />
+                  <span>Take Live Photo</span>
+                </button>
                 <label className="btn-specimen-primary">
                   <Upload size={14} />
                   <span>Choose Photo File</span>
@@ -1070,6 +1183,96 @@ function OfficialEvidenceWizard() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* CAMERA VIEWFINDER MODAL */}
+      {showCamera && (
+        <div className="sheet-backdrop-overlay" onClick={stopCamera}>
+          <div className="evidence-camera-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="camera-modal-header">
+              <div className="camera-live-indicator">
+                <span className="live-camera-pulse-dot" />
+                <b>EVIDENCE CAMERA</b>
+                <span className="camera-spec-pill">LIVE VIEWFINDER</span>
+              </div>
+              <button className="btn-close-camera" onClick={stopCamera} title="Close Camera">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="camera-viewfinder-box">
+              {cameraError ? (
+                <div className="camera-error-banner">
+                  <AlertCircle size={32} className="text-red" />
+                  <b>Camera Permission Needed</b>
+                  <p>{cameraError}</p>
+                  <div className="camera-error-actions">
+                    <button className="btn-camera-retry" onClick={() => startCamera()}>
+                      <RotateCcw size={13} />
+                      <span>Try Again</span>
+                    </button>
+                    <label className="btn-camera-upload-fallback">
+                      <Camera size={13} />
+                      <span>Use Mobile Camera</span>
+                      <input type="file" accept="image/*" capture="environment" onChange={handleFileChoose} hidden />
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="camera-video-element"
+                  />
+                  {/* VIEWFINDER TARGET CORNERS & GRID */}
+                  <div className="camera-crosshairs-grid">
+                    <div className="target-corner tl" />
+                    <div className="target-corner tr" />
+                    <div className="target-corner bl" />
+                    <div className="target-corner br" />
+                    <div className="viewfinder-center-crosshair">+</div>
+                  </div>
+                  <div className="camera-telemetry-overlay">
+                    <span>CASE: {caseLabel}</span>
+                    <span>TIMESTAMP: {new Date().toLocaleTimeString()}</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {!cameraError && (
+              <div className="camera-controls-bottom-bar">
+                <button
+                  type="button"
+                  className="btn-flip-camera"
+                  onClick={switchCameraFacing}
+                  title="Switch front / rear camera"
+                >
+                  <SwitchCamera size={18} />
+                  <span>Flip</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-shutter-snap"
+                  onClick={capturePhoto}
+                  title="Capture Photo Specimen"
+                >
+                  <div className="shutter-inner-ring">
+                    <Camera size={26} />
+                  </div>
+                </button>
+
+                <button type="button" className="btn-cancel-camera" onClick={stopCamera}>
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

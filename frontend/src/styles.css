@@ -5183,3 +5183,302 @@ button, input, select {
   flex-direction: column;
   gap: 9px;
 }
+
+
+/* ==========================================================================
+   PHOTO VAULT CAMERA STYLES
+   ========================================================================== */
+.btn-specimen-camera {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: 0;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.btn-specimen-camera:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
+.btn-retake-camera {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-retake-camera:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.specimen-name-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+}
+
+.placeholder-icon-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.evidence-camera-modal {
+  background: #0f172a;
+  border-radius: 16px;
+  max-width: 620px;
+  width: 92%;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+  animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.camera-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.camera-live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f8fafc;
+  font-size: 12px;
+}
+
+.live-camera-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: pulseDot 1.4s infinite;
+}
+
+.camera-spec-pill {
+  font-size: 9px;
+  font-weight: 750;
+  background: #0284c7;
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.btn-close-camera {
+  background: transparent;
+  border: 0;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.btn-close-camera:hover {
+  color: #ffffff;
+}
+
+.camera-viewfinder-box {
+  position: relative;
+  background: #000000;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.camera-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-crosshairs-grid {
+  position: absolute;
+  inset: 16px;
+  pointer-events: none;
+}
+
+.viewfinder-center-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 28px;
+  font-weight: 300;
+}
+
+.camera-telemetry-overlay {
+  position: absolute;
+  bottom: 10px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  font-family: monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 3px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.camera-controls-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: #1e293b;
+  border-top: 1px solid #334155;
+}
+
+.btn-shutter-snap {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 4px solid #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+}
+
+.btn-shutter-snap:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.6);
+}
+
+.shutter-inner-ring {
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-flip-camera {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: transparent;
+  border: 0;
+  color: #cbd5e1;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+.btn-flip-camera:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+.btn-cancel-camera {
+  background: transparent;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-cancel-camera:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+.camera-error-banner {
+  padding: 24px;
+  text-align: center;
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.camera-error-banner b {
+  font-size: 15px;
+  color: #f87171;
+}
+
+.camera-error-banner p {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0 0 14px;
+  line-height: 1.45;
+}
+
+.camera-error-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-camera-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #0284c7;
+  color: #ffffff;
+  border: 0;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.btn-camera-upload-fallback {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #334155;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
