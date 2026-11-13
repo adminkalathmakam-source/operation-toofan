@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, AlertCircle, ArrowRight, BadgeAlert, Banknote, Camera, Check, CheckCircle2, ChevronRight,
   Copy, Download, Eye, FileDown, FileSpreadsheet, Fingerprint, FlaskConical,
-  GitBranch, HeartHandshake, History, Landmark, Layers, Lock, MapPin, Menu,
-  Pause, Play, QrCode, Radio, RefreshCw, RotateCcw, Search, Shield, ShieldAlert, ShieldCheck,
+  GitBranch, HeartHandshake, History, Landmark, Layers, Loader2, Lock, MapPin, Menu,
+  Pause, Play, QrCode, Radio, RefreshCw, RotateCcw, Scan, Search, Shield, ShieldAlert, ShieldCheck,
   Smartphone, Sparkles, Store, SwitchCamera, Trash2, Upload, Volume2, VolumeX, Wallet, X, Zap
 } from "lucide-react";
 import { saveEvidence, getAllEvidence, deleteEvidence } from "./evidenceStore";
@@ -177,7 +177,7 @@ function money(value) {
 // ----------------------------------------------------
 // OFFICIAL TOPOLOGY GRAPH VISUALIZER
 // ----------------------------------------------------
-function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, activeHighlightEdge, onLoadDemo, onOpenGPay }) {
+function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, activeHighlightEdge, onLoadDemo, onOpenGPay, isAnalyzing = false }) {
   const [minAmount, setMinAmount] = useState(0);
   const [animateParticles, setAnimateParticles] = useState(true);
 
@@ -331,6 +331,19 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
 
       {/* SVG CANVAS */}
       <div className="graph-canvas-box">
+        {isAnalyzing && <div className="radar-scan-beam" />}
+        {isAnalyzing && (
+          <div className="topology-analyzing-hud">
+            <div className="hud-radar-pulse" />
+            <div className="hud-text-col">
+              <div className="hud-title-row">
+                <Scan size={14} className="spin-slow text-sky" />
+                <b>FORENSIC TRACE ENGINE ACTIVE</b>
+              </div>
+              <span>Tracing money flow pathways, detecting fake accounts &amp; analyzing cashout hubs...</span>
+            </div>
+          </div>
+        )}
         <div className="tier-stage-labels">
           <span className="tier-badge-label blue"><span className="tier-dot blue" /> STEP 1 · STUDENTS</span>
           <span className="tier-badge-label green"><span className="tier-dot green" /> STEP 2 · SHOPS &amp; QR</span>
@@ -663,6 +676,7 @@ function OfficialEvidenceWizard() {
   const [file, setFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [digest, setDigest] = useState("");
+  const [isHashing, setIsHashing] = useState(false);
   const [capturedAt, setCapturedAt] = useState("");
   const [coordinates, setCoordinates] = useState(null);
   const [officer, setOfficer] = useState("OFFICER-DEMO-01");
@@ -784,6 +798,7 @@ function OfficialEvidenceWizard() {
     if (!globalThis.crypto?.subtle) {
       throw new Error("Web Crypto unavailable. Please use modern browser.");
     }
+    setIsHashing(true);
     const bytes = await blob.arrayBuffer();
     const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
     const hex = Array.from(new Uint8Array(hashBuffer), (byte) =>
@@ -796,6 +811,7 @@ function OfficialEvidenceWizard() {
     setCapturedAt(new Date().toISOString());
     sounds.playClick();
     setNotice("Local SHA-256 digest computed successfully.");
+    setTimeout(() => setIsHashing(false), 700);
   }
 
   async function handleFileChoose(e) {
@@ -973,7 +989,16 @@ function OfficialEvidenceWizard() {
             <div className="specimen-drop-box">
               {filePreview ? (
                 <div className="specimen-preview-box">
-                  <img src={filePreview} alt="Specimen Thumbnail" className="specimen-thumbnail" />
+                  <div className="specimen-image-container">
+                    <img src={filePreview} alt="Specimen Thumbnail" className="specimen-thumbnail" />
+                    {isHashing && <div className="laser-hashing-scanner-beam" />}
+                    {isHashing && (
+                      <div className="laser-hashing-badge">
+                        <Fingerprint size={15} className="spin-slow" />
+                        <span>COMPUTING SHA-256 DIGITAL FINGERPRINT...</span>
+                      </div>
+                    )}
+                  </div>
                   <div className="specimen-name-badge">
                     <div className="specimen-name-left">
                       <b>{file}</b>
@@ -1118,13 +1143,13 @@ function OfficialEvidenceWizard() {
             </div>
 
             <button
-              className="btn-export-pdf-official"
+              className={`btn-export-pdf-official ${busy ? "is-exporting" : ""}`}
               onClick={handleSaveAndExport}
               disabled={busy}
             >
-              <FileDown size={17} />
-              <span>{busy ? "Generating Document..." : "Save to Vault & Download PDF Report"}</span>
-              <ChevronRight size={16} />
+              {busy ? <Loader2 size={17} className="spin-fast" /> : <FileDown size={17} />}
+              <span>{busy ? "Compiling Report & Cryptographic Signatures..." : "Save to Vault & Download PDF Report"}</span>
+              {!busy && <ChevronRight size={16} />}
             </button>
 
             {notice && <div className="evidence-status-toast">{notice}</div>}
@@ -1499,6 +1524,7 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   const [viewMode, setViewMode] = useState("all"); // all | direct | candy | cashDeposit
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [simulating, setSimulating] = useState(false);
   const [simStepIndex, setSimStepIndex] = useState(0);
   const [resetToast, setResetToast] = useState(false);
@@ -1577,14 +1603,17 @@ export default function App() {
 
   function handleSelectViewMode(modeKey) {
     sounds.playClick();
+    setIsAnalyzing(true);
     setViewMode(modeKey);
     setSimStepIndex(0);
     setSimulating(false);
     setSelectedNode(null);
+    setTimeout(() => setIsAnalyzing(false), 550);
   }
 
   async function handleLoadSampleData(sKey = "burst") {
     sounds.playClick();
+    setIsAnalyzing(true);
     const scenario = SCENARIOS[sKey] || SCENARIOS.burst;
     const records = scenario.records;
     const merchantObs = scenario.merchant ?? [];
@@ -1599,6 +1628,7 @@ export default function App() {
     await broadcast(records, merchantObs);
     setViewMode(sKey === "candy" ? "candy" : sKey === "direct" ? "direct" : sKey === "cashDeposit" ? "cashDeposit" : "all");
     setResetToast(false);
+    setTimeout(() => setIsAnalyzing(false), 650);
   }
 
   function handleRestoreDemo() {
@@ -1832,6 +1862,9 @@ export default function App() {
 
   return (
     <div className="official-app-container">
+      {/* GLOBAL TOP SCANNER LOADER */}
+      {isAnalyzing && <div className="global-top-scanner-bar" />}
+
       {/* OFFICIAL HEADER BANNER */}
       <div className="official-top-banner">
         <FlaskConical size={14} className="text-sky" />
@@ -2153,7 +2186,11 @@ export default function App() {
                       <span>TOTAL MONEY TRACKED</span>
                       <div className="kpi-icon-wrap blue"><Banknote size={17} /></div>
                     </div>
-                    <div className="kpi-value">{money(displayTotal)}</div>
+                    {isAnalyzing ? (
+                      <div className="kpi-skeleton-loader" />
+                    ) : (
+                      <div className="kpi-value">{money(displayTotal)}</div>
+                    )}
                     <div className="kpi-sub">
                       Across {displayTransactions.length} payments tracked
                       <span className="kpi-status-tag green">● Live Stream</span>
@@ -2165,7 +2202,11 @@ export default function App() {
                       <span>FAKE ACCOUNTS (MULES)</span>
                       <div className="kpi-icon-wrap red"><BadgeAlert size={17} /></div>
                     </div>
-                    <div className="kpi-value text-red">{displayTrace.candidates?.length ?? 0}</div>
+                    {isAnalyzing ? (
+                      <div className="kpi-skeleton-loader red" />
+                    ) : (
+                      <div className="kpi-value text-red">{displayTrace.candidates?.length ?? 0}</div>
+                    )}
                     <div className="kpi-sub">
                       Accounts collecting money from multiple people
                       <span className="kpi-status-tag red">● High Risk</span>
@@ -2177,7 +2218,11 @@ export default function App() {
                       <span>MONEY TRAILS FOUND</span>
                       <div className="kpi-icon-wrap green"><GitBranch size={17} /></div>
                     </div>
-                    <div className="kpi-value">{displayTrace.paths?.length ?? 0}</div>
+                    {isAnalyzing ? (
+                      <div className="kpi-skeleton-loader green" />
+                    ) : (
+                      <div className="kpi-value">{displayTrace.paths?.length ?? 0}</div>
+                    )}
                     <div className="kpi-sub">
                       Step-by-step payment paths traced
                       <span className="kpi-status-tag blue">● Traced</span>
@@ -2189,9 +2234,13 @@ export default function App() {
                       <span>SHOP CASH ALERTS</span>
                       <div className="kpi-icon-wrap yellow"><Store size={17} /></div>
                     </div>
-                    <div className="kpi-value text-yellow">
-                      {displayTrace.merchant_alerts?.filter((a) => a.status === "unusual-receipts-review").length ?? 0}
-                    </div>
+                    {isAnalyzing ? (
+                      <div className="kpi-skeleton-loader yellow" />
+                    ) : (
+                      <div className="kpi-value text-yellow">
+                        {displayTrace.merchant_alerts?.filter((a) => a.status === "unusual-receipts-review").length ?? 0}
+                      </div>
+                    )}
                     <div className="kpi-sub">
                       Shops with sudden cash jumps
                       <span className="kpi-status-tag yellow">● 4x Jump</span>
@@ -2211,6 +2260,7 @@ export default function App() {
                     sounds.playClick();
                     setActiveTab("gpay");
                   }}
+                  isAnalyzing={isAnalyzing}
                 />
 
                 {/* SELECTED NODE DOSSIER FLYOUT */}

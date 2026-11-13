@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   AlertCircle, ArrowRight, BadgeAlert, Banknote, Check, CheckCircle2,
-  ChevronRight, Coins, DollarSign, Eye, GitBranch, Landmark, Plus,
+  ChevronRight, Coins, DollarSign, Eye, GitBranch, Landmark, Loader2, Plus,
   RotateCcw, ShieldCheck, Sparkles, Store, Trash2, User, Users, Volume2, Wallet, Zap
 } from "lucide-react";
 import { sounds } from "./soundEffects";
@@ -46,6 +46,7 @@ export default function CashLaunderingDesk({
   const [busy, setBusy] = useState(false);
   const [successModal, setSuccessModal] = useState(null);
   const [statusMsg, setStatusMsg] = useState("");
+  const [launderingHopStage, setLaunderingHopStage] = useState(null); // null | 1 | 2 | 3 | 4
 
   const pocketTotal = pocketStash.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   const threshold = 1000;
@@ -155,9 +156,23 @@ export default function CashLaunderingDesk({
       },
     ];
 
+    // 4-Hop Animated Progression
+    setLaunderingHopStage(1);
+    await new Promise((r) => setTimeout(r, 380));
+    setLaunderingHopStage(2);
+    sounds.playClick();
+    await new Promise((r) => setTimeout(r, 380));
+    setLaunderingHopStage(3);
+    sounds.playClick();
+    await new Promise((r) => setTimeout(r, 380));
+    setLaunderingHopStage(4);
+
     if (typeof onAddTransactions === "function") {
       await onAddTransactions(newTxList, merchantObs);
     }
+
+    await new Promise((r) => setTimeout(r, 340));
+    setLaunderingHopStage(null);
 
     sounds.playPaySuccess();
     setSuccessModal({
@@ -245,9 +260,23 @@ export default function CashLaunderingDesk({
       },
     ];
 
+    // 4-Hop Animated Progression for Pooled Cash
+    setLaunderingHopStage(1);
+    await new Promise((r) => setTimeout(r, 380));
+    setLaunderingHopStage(2);
+    sounds.playClick();
+    await new Promise((r) => setTimeout(r, 380));
+    setLaunderingHopStage(3);
+    sounds.playClick();
+    await new Promise((r) => setTimeout(r, 380));
+    setLaunderingHopStage(4);
+
     if (typeof onAddTransactions === "function") {
       await onAddTransactions(combinedTxs, merchantObs);
     }
+
+    await new Promise((r) => setTimeout(r, 340));
+    setLaunderingHopStage(null);
 
     sounds.playPaySuccess();
     setSuccessModal({
@@ -727,6 +756,66 @@ export default function CashLaunderingDesk({
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 4-HOP PROGRESSION LOADER MODAL                            */}
+      {/* ========================================================= */}
+      {launderingHopStage && (
+        <div className="sheet-backdrop-overlay">
+          <div className="laundering-progress-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="hop-modal-header">
+              <div className="hop-pulse-dot" />
+              <b>EXECUTING 4-HOP LAUNDERING SCHEME</b>
+              <span className="hop-step-pill">HOP {launderingHopStage} OF 4</span>
+            </div>
+
+            <div className="hop-progress-bar-track">
+              <div
+                className="hop-progress-bar-fill"
+                style={{ width: `${launderingHopStage * 25}%` }}
+              />
+            </div>
+
+            <div className="hop-stages-animated-list">
+              <div className={`hop-live-item ${launderingHopStage >= 1 ? "active" : ""} ${launderingHopStage === 1 ? "current" : ""}`}>
+                <div className="hop-step-avatar blue">👤</div>
+                <div className="hop-step-text">
+                  <b>Hop 1: Handing over physical cash</b>
+                  <small>Students hand currency notes directly to Provider</small>
+                </div>
+                {launderingHopStage > 1 ? <Check size={16} className="text-emerald" /> : launderingHopStage === 1 ? <Loader2 size={16} className="spin-fast text-google-blue" /> : null}
+              </div>
+
+              <div className={`hop-live-item ${launderingHopStage >= 2 ? "active" : ""} ${launderingHopStage === 2 ? "current" : ""}`}>
+                <div className="hop-step-avatar yellow">🏪</div>
+                <div className="hop-step-text">
+                  <b>Hop 2: Counter deposit at Fort Road Bakery</b>
+                  <small>Provider delivers accumulated currency notes to shopkeeper</small>
+                </div>
+                {launderingHopStage > 2 ? <Check size={16} className="text-emerald" /> : launderingHopStage === 2 ? <Loader2 size={16} className="spin-fast text-google-blue" /> : null}
+              </div>
+
+              <div className={`hop-live-item ${launderingHopStage >= 3 ? "active" : ""} ${launderingHopStage === 3 ? "current" : ""}`}>
+                <div className="hop-step-avatar green">⚡</div>
+                <div className="hop-step-text">
+                  <b>Hop 3: Bakery transfers online UPI to Alt Account 7A</b>
+                  <small>Shop sends clean digital funds to secret collector mule</small>
+                </div>
+                {launderingHopStage > 3 ? <Check size={16} className="text-emerald" /> : launderingHopStage === 3 ? <Loader2 size={16} className="spin-fast text-google-blue" /> : null}
+              </div>
+
+              <div className={`hop-live-item ${launderingHopStage >= 4 ? "active" : ""} ${launderingHopStage === 4 ? "current" : ""}`}>
+                <div className="hop-step-avatar purple">🏛️</div>
+                <div className="hop-step-text">
+                  <b>Hop 4: Alt Account forwards to Main Cashout Hub</b>
+                  <small>Cleaned digital money arrives safely at terminal boss account</small>
+                </div>
+                {launderingHopStage === 4 ? <Loader2 size={16} className="spin-fast text-google-blue" /> : null}
               </div>
             </div>
           </div>

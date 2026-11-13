@@ -68,6 +68,7 @@ export default function PayDemo({
 
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [payProgressStage, setPayProgressStage] = useState(null); // null | "connecting" | "authorizing" | "confirming"
   const [lastTxId, setLastTxId] = useState("UPI/432910481029/PAY");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -230,6 +231,10 @@ export default function PayDemo({
   async function processTransfer() {
     setBusy(true);
     setShowPaySheet(false);
+    setShowPinModal(false);
+    setPayProgressStage("connecting");
+    sounds.playClick();
+
     const numAmount = Number(amount) || 50;
     const cleanSender = sender.trim().toUpperCase() || "STUDENT-014";
     const cleanReceiver = recipient.trim();
@@ -249,6 +254,9 @@ export default function PayDemo({
           { sender: cleanReceiver, receiver: "FAKE-ACC-8B", amount: Math.max(0, numAmount * 3), channel: "transfer", is_p2m: false, reference_id: txId },
           { sender: "FAKE-ACC-8B", receiver: "CASHOUT-HUB", amount: Math.max(0, numAmount * 3 - 50), channel: "transfer", is_p2m: false, reference_id: txId },
         ];
+
+    await new Promise((r) => setTimeout(r, 450));
+    setPayProgressStage("authorizing");
 
     if (typeof onAddTransactions === "function") {
       await onAddTransactions(generatedTx, []);
@@ -275,6 +283,11 @@ export default function PayDemo({
       } catch {}
     }
 
+    await new Promise((r) => setTimeout(r, 450));
+    setPayProgressStage("confirming");
+    await new Promise((r) => setTimeout(r, 380));
+
+    setPayProgressStage(null);
     setBusy(false);
     setShowSuccess(true);
     sounds.playPaySuccess();
@@ -1023,6 +1036,33 @@ export default function PayDemo({
               <button className="keypad-key backspace" onClick={handleKeypadBackspace}>
                 ⌫
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2.5: GOOGLE PAY PAYMENT PROCESSING SHEET */}
+      {payProgressStage && (
+        <div className="sheet-backdrop-overlay">
+          <div className="gpay-processing-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="gpay-loading-circle-wrap">
+              <div className="gpay-quad-spinner" />
+              <div className="gpay-center-shield">
+                <ShieldCheck size={26} className="text-google-blue" />
+              </div>
+            </div>
+            <h3>Paying {money(Number(amount) || 0)}</h3>
+            <p className="processing-recipient-line">To: <b>{recipientName || recipient}</b></p>
+            <div className="processing-status-strip">
+              <span className="processing-pulsing-dot" />
+              <span className="processing-status-label">
+                {payProgressStage === "connecting" && "Securing encrypted connection to Bank..."}
+                {payProgressStage === "authorizing" && "Authorizing UPI payment & verifying PIN..."}
+                {payProgressStage === "confirming" && "Finalizing real-time transfer via NPCI..."}
+              </span>
+            </div>
+            <div className="processing-bank-badge">
+              <span>STATE BANK OF INDIA · UPI 2.0</span>
             </div>
           </div>
         </div>
