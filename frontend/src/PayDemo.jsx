@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   ArrowRight, BadgeAlert, Banknote, Check, CheckCircle2, ChevronRight,
-  CircleHelp, Copy, Gift, Info, Lock, MapPin, Mic, QrCode, RefreshCw, RotateCcw,
+  CircleHelp, Copy, Gift, GitBranch, Info, Lock, MapPin, Mic, QrCode, RefreshCw, RotateCcw,
   Search, Shield, ShieldCheck, Smartphone, Sparkles, Store, Tag,
   Volume2, VolumeX, Wallet, X, Zap
 } from "lucide-react";
@@ -34,7 +34,13 @@ const PRESETS = [
   { id: "cash", label: "💵 Suspicious Cash Spike", desc: "Shop deposits unusual cash into bank account" },
 ];
 
-export default function PayDemo({ embedded = false }) {
+export default function PayDemo({
+  embedded = false,
+  transactions = [],
+  onAddTransactions = null,
+  onResetTransactions = null,
+  onNavigateTab = null,
+}) {
   const [activeTab, setActiveTab] = useState("consumer"); // consumer | business
   const [sender, setSender] = useState("STUDENT-014");
   const [recipient, setRecipient] = useState("bakery.demo@upi");
@@ -118,25 +124,31 @@ export default function PayDemo({ embedded = false }) {
     } else {
       sounds.playClick();
     }
-    const emptyTrace = {
-      nodes: [],
-      edges: [],
-      paths: [],
-      candidates: [],
-      merchant_alerts: [],
-      excluded_p2m_count: 0,
-      transaction_count: 0,
-      notice: "All synthetic transactions and paths have been reset.",
-    };
-    try {
-      localStorage.setItem(BRIDGE_KEY, JSON.stringify({
-        createdAt: new Date().toISOString(),
-        transactions: [],
-        merchantObservations: [],
-        trace: emptyTrace,
-      }));
-      await fetch(`${API}/api/reset`, { method: "POST" });
-    } catch {}
+    if (typeof onResetTransactions === "function") {
+      onResetTransactions();
+    } else {
+      const emptyTrace = {
+        nodes: [],
+        edges: [],
+        paths: [],
+        candidates: [],
+        merchant_alerts: [],
+        excluded_p2m_count: 0,
+        transaction_count: 0,
+        notice: "All synthetic transactions and paths have been reset to zero.",
+      };
+      try {
+        localStorage.setItem(BRIDGE_KEY, JSON.stringify({
+          createdAt: new Date().toISOString(),
+          transactions: [],
+          merchantObservations: [],
+          trace: emptyTrace,
+          isReset: true,
+        }));
+        await fetch(`${API}/api/reset`, { method: "POST" });
+        window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: { transactions: [], trace: emptyTrace } }));
+      } catch {}
+    }
     setStatus("✨ All transactions have been reset to zero.");
     setTimeout(() => setStatus(""), 4000);
   }
@@ -144,7 +156,7 @@ export default function PayDemo({ embedded = false }) {
   async function executeBurst() {
     setBusy(true);
     setStatus("Broadcasting payments to Money Flow Map...");
-    const transactions = [
+    const burstTx = [
       { sender: "STUDENT-014", receiver: "BAKERY-QR-02", amount: 35, channel: "upi", is_p2m: true },
       { sender: "BAKERY-QR-02", receiver: "FAKE-ACC-7A", amount: 3400, channel: "merchant-settlement", is_p2m: false },
       { sender: "STUDENT-028", receiver: "FAKE-ACC-7A", amount: 950, channel: "upi", is_p2m: false },
@@ -153,33 +165,33 @@ export default function PayDemo({ embedded = false }) {
       { sender: "STUDENT-044", receiver: "FAKE-ACC-8B", amount: 600, channel: "upi", is_p2m: false },
       { sender: "FAKE-ACC-8B", receiver: "CASHOUT-HUB", amount: 600, channel: "transfer", is_p2m: false },
     ];
-    try {
-      localStorage.setItem(BRIDGE_KEY, JSON.stringify({
-        createdAt: new Date().toISOString(),
-        transactions,
-        merchantObservations: [],
-      }));
-      const res = await fetch(`${API}/api/trace-mule`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactions, merchant_observations: [] }),
-      });
-      if (res.ok) {
-        const trace = await res.json();
+    if (typeof onAddTransactions === "function") {
+      await onAddTransactions(burstTx, []);
+    } else {
+      try {
+        const raw = localStorage.getItem(BRIDGE_KEY);
+        const stored = JSON.parse(raw ?? "{}");
+        const existing = Array.isArray(stored.transactions) ? stored.transactions : [];
+        const combined = [...burstTx, ...existing];
+        const res = await fetch(`${API}/api/trace-mule`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transactions: combined, merchant_observations: [] }),
+        });
+        const trace = res.ok ? await res.json() : null;
         localStorage.setItem(BRIDGE_KEY, JSON.stringify({
           createdAt: new Date().toISOString(),
-          transactions,
+          transactions: combined,
           merchantObservations: [],
           trace,
+          isReset: false,
         }));
-      }
-      sounds.playPaySuccess();
-      setStatus("Burst sequence sent! Money trails updated in Command Center.");
-    } catch {
-      setStatus("Burst sequence saved locally.");
-    } finally {
-      setBusy(false);
+        window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: { transactions: combined, trace } }));
+      } catch {}
     }
+    sounds.playPaySuccess();
+    setStatus("Burst sequence sent! Money trails updated in Command Center.");
+    setBusy(false);
   }
 
   function startPaymentFlow() {
@@ -226,7 +238,7 @@ export default function PayDemo({ embedded = false }) {
     const txId = `UPI/${Math.floor(100000000000 + Math.random() * 900000000000)}/PAY`;
     setLastTxId(txId);
 
-    const transactions = isP2M
+    const generatedTx = isP2M
       ? [
           { sender: cleanSender, receiver: cleanReceiver, amount: numAmount, channel: "upi", is_p2m: true, reference_id: txId },
           { sender: cleanReceiver, receiver: "FAKE-ACC-7A", amount: Math.max(0, numAmount * 4), channel: "merchant-settlement", is_p2m: false, reference_id: txId },
@@ -238,37 +250,37 @@ export default function PayDemo({ embedded = false }) {
           { sender: "FAKE-ACC-8B", receiver: "CASHOUT-HUB", amount: Math.max(0, numAmount * 3 - 50), channel: "transfer", is_p2m: false, reference_id: txId },
         ];
 
-    try {
-      localStorage.setItem(BRIDGE_KEY, JSON.stringify({
-        createdAt: new Date().toISOString(),
-        transactions,
-        merchantObservations: [],
-      }));
-
-      const res = await fetch(`${API}/api/trace-mule`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactions, merchant_observations: [] }),
-      });
-      if (res.ok) {
-        const trace = await res.json();
+    if (typeof onAddTransactions === "function") {
+      await onAddTransactions(generatedTx, []);
+    } else {
+      try {
+        const raw = localStorage.getItem(BRIDGE_KEY);
+        const stored = JSON.parse(raw ?? "{}");
+        const existing = Array.isArray(stored.transactions) ? stored.transactions : [];
+        const combined = [...generatedTx, ...existing];
+        const res = await fetch(`${API}/api/trace-mule`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transactions: combined, merchant_observations: [] }),
+        });
+        const trace = res.ok ? await res.json() : null;
         localStorage.setItem(BRIDGE_KEY, JSON.stringify({
           createdAt: new Date().toISOString(),
-          transactions,
+          transactions: combined,
           merchantObservations: [],
           trace,
+          isReset: false,
         }));
-      }
-    } catch {
-      // Offline demo fallback
-    } finally {
-      setBusy(false);
-      setShowSuccess(true);
-      sounds.playPaySuccess();
-      setTimeout(() => {
-        triggerConfetti(canvasRef);
-      }, 100);
+        window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: { transactions: combined, trace } }));
+      } catch {}
     }
+
+    setBusy(false);
+    setShowSuccess(true);
+    sounds.playPaySuccess();
+    setTimeout(() => {
+      triggerConfetti(canvasRef);
+    }, 100);
   }
 
   async function submitMerchantCash() {
@@ -278,7 +290,7 @@ export default function PayDemo({ embedded = false }) {
     const cleanMerchant = merchant.trim().toUpperCase() || "MERCHANT-DEMO-01";
     const txId = `CASH-DEP/${Math.floor(10000000 + Math.random() * 90000000)}`;
 
-    const transactions = [
+    const generatedTx = [
       { sender: `${cleanMerchant}-CASH-VAULT`, receiver: "COMMERCIAL-BANK-SETTLEMENT", amount: observedValue, channel: "cash-deposit", is_p2m: false, event_type: "cash_deposit", reference_id: txId },
       { sender: "COMMERCIAL-BANK-SETTLEMENT", receiver: "FAKE-ACC-7A", amount: Math.max(0, observedValue - 40), channel: "merchant-settlement", is_p2m: false, event_type: "settlement", reference_id: txId },
       { sender: "FAKE-ACC-7A", receiver: "CASHOUT-HUB", amount: Math.max(0, observedValue - 90), channel: "bank-transfer", is_p2m: false, event_type: "transfer", reference_id: txId },
@@ -291,33 +303,34 @@ export default function PayDemo({ embedded = false }) {
       observed_daily_receipts: observedValue,
     }];
 
-    try {
-      localStorage.setItem(BRIDGE_KEY, JSON.stringify({
-        createdAt: new Date().toISOString(),
-        transactions,
-        merchantObservations,
-      }));
-      const res = await fetch(`${API}/api/trace-mule`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactions, merchant_observations: merchantObservations }),
-      });
-      if (res.ok) {
-        const trace = await res.json();
+    if (typeof onAddTransactions === "function") {
+      await onAddTransactions(generatedTx, merchantObservations);
+    } else {
+      try {
+        const raw = localStorage.getItem(BRIDGE_KEY);
+        const stored = JSON.parse(raw ?? "{}");
+        const existing = Array.isArray(stored.transactions) ? stored.transactions : [];
+        const combined = [...generatedTx, ...existing];
+        const res = await fetch(`${API}/api/trace-mule`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transactions: combined, merchant_observations: merchantObservations }),
+        });
+        const trace = res.ok ? await res.json() : null;
         localStorage.setItem(BRIDGE_KEY, JSON.stringify({
           createdAt: new Date().toISOString(),
-          transactions,
+          transactions: combined,
           merchantObservations,
           trace,
+          isReset: false,
         }));
-      }
-      sounds.speakAnnouncement(`Rupees ${observedValue} cash received at ${cleanMerchant}`);
-      setStatus(`Cash observation logged! ${money(observedValue)} deposit sent to Money Flow Map.`);
-    } catch {
-      setStatus("Cash observation stored locally.");
-    } finally {
-      setBusy(false);
+        window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: { transactions: combined, trace } }));
+      } catch {}
     }
+
+    sounds.speakAnnouncement(`Rupees ${observedValue} cash received at ${cleanMerchant}`);
+    setStatus(`Cash observation logged! ${money(observedValue)} deposit sent to Money Flow Map.`);
+    setBusy(false);
   }
 
   return (
@@ -1057,12 +1070,15 @@ export default function PayDemo({ embedded = false }) {
                 className="btn-gpay-main full"
                 onClick={() => {
                   setShowSuccess(false);
-                  if (typeof window !== "undefined") {
+                  if (typeof onNavigateTab === "function") {
+                    onNavigateTab("overview");
+                  } else if (typeof window !== "undefined") {
                     window.location.href = "/";
                   }
                 }}
               >
-                <span>Track Cash on Main Dashboard</span>
+                <GitBranch size={16} />
+                <span>Track Live on Money Flow Map</span>
                 <ArrowRight size={15} />
               </button>
 

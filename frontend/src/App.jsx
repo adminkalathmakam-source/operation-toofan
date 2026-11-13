@@ -153,7 +153,7 @@ function money(value) {
 // ----------------------------------------------------
 // OFFICIAL TOPOLOGY GRAPH VISUALIZER
 // ----------------------------------------------------
-function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, activeHighlightEdge, onLoadDemo }) {
+function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, activeHighlightEdge, onLoadDemo, onOpenGPay }) {
   const [minAmount, setMinAmount] = useState(0);
   const [animateParticles, setAnimateParticles] = useState(true);
 
@@ -312,12 +312,20 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
             <p>
               All transactions were reset to a clean slate. You can record a new payment in Google Pay or choose a test pattern above.
             </p>
-            {onLoadDemo && (
-              <button className="btn-load-demo-inline" onClick={onLoadDemo}>
-                <Play size={13} />
-                <span>Load Sample Money Trail</span>
-              </button>
-            )}
+            <div className="empty-state-actions-cluster">
+              {onLoadDemo && (
+                <button className="btn-load-demo-inline" onClick={onLoadDemo}>
+                  <Play size={13} />
+                  <span>Load Sample Money Trail</span>
+                </button>
+              )}
+              {onOpenGPay && (
+                <button className="btn-load-demo-inline secondary" onClick={onOpenGPay}>
+                  <Smartphone size={13} />
+                  <span>Make Payment in Google Pay</span>
+                </button>
+              )}
+            </div>
           </div>
         ) : (
         <svg
@@ -1029,7 +1037,7 @@ function OfficialEvidenceWizard() {
 // ----------------------------------------------------
 // SIMPLIFIED TRANSACTION FORENSICS LEDGER
 // ----------------------------------------------------
-function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo }) {
+function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo, onOpenGPay }) {
   const [filterQuery, setFilterQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState("all");
 
@@ -1140,12 +1148,20 @@ function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo 
                     </div>
                     <b>No Transactions Recorded</b>
                     <p>All transactions have been reset to 0. Send a payment in Google Pay or load test data.</p>
-                    {onLoadDemo && (
-                      <button className="btn-empty-load-demo" onClick={onLoadDemo}>
-                        <Play size={13} />
-                        <span>Load Sample Transactions</span>
-                      </button>
-                    )}
+                    <div className="empty-state-actions-cluster">
+                      {onLoadDemo && (
+                        <button className="btn-empty-load-demo" onClick={onLoadDemo}>
+                          <Play size={13} />
+                          <span>Load Sample Transactions</span>
+                        </button>
+                      )}
+                      {onOpenGPay && (
+                        <button className="btn-empty-load-demo secondary" onClick={onOpenGPay}>
+                          <Smartphone size={13} />
+                          <span>Make Payment in Google Pay</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -1190,13 +1206,55 @@ function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo 
 // ----------------------------------------------------
 export default function App() {
   const [privacy, setPrivacy] = useState(true);
-  const [trace, setTrace] = useState(initialTrace);
-  const [transactions, setTransactions] = useState(initialTransactions);
+
+  const [transactions, setTransactions] = useState(() => {
+    try {
+      const raw = localStorage.getItem(BRIDGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.isReset) return [];
+        if (Array.isArray(parsed.transactions)) return parsed.transactions;
+      }
+    } catch {}
+    return initialTransactions;
+  });
+
+  const [trace, setTrace] = useState(() => {
+    try {
+      const raw = localStorage.getItem(BRIDGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.isReset) {
+          return {
+            nodes: [],
+            edges: [],
+            paths: [],
+            candidates: [],
+            merchant_alerts: [],
+            excluded_p2m_count: 0,
+            transaction_count: 0,
+            notice: "All synthetic transactions and paths have been reset to zero.",
+          };
+        }
+        if (parsed.trace) return parsed.trace;
+      }
+    } catch {}
+    return initialTrace;
+  });
+
   const [activeTab, setActiveTab] = useState("overview"); // overview | gpay | evidence | ledger
   const [selectedNode, setSelectedNode] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [activeScenario, setActiveScenario] = useState("burst");
+
+  const [activeScenario, setActiveScenario] = useState(() => {
+    try {
+      const raw = localStorage.getItem(BRIDGE_KEY);
+      if (raw && JSON.parse(raw).isReset) return null;
+    } catch {}
+    return "burst";
+  });
+
   const [simulating, setSimulating] = useState(false);
   const [simStepIndex, setSimStepIndex] = useState(0);
   const [resetToast, setResetToast] = useState(false);
@@ -1219,16 +1277,18 @@ export default function App() {
       merchant_alerts: [],
       excluded_p2m_count: 0,
       transaction_count: 0,
-      notice: "All synthetic transactions and paths have been reset.",
+      notice: "All synthetic transactions and paths have been reset to zero.",
     };
     const emptyPayload = {
       createdAt: new Date().toISOString(),
       transactions: [],
       merchantObservations: [],
       trace: emptyTrace,
+      isReset: true,
     };
     try {
       localStorage.setItem(BRIDGE_KEY, JSON.stringify(emptyPayload));
+      window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: emptyPayload }));
       await fetch(`${API}/api/reset`, { method: "POST" });
     } catch {}
     setTransactions([]);
@@ -1239,6 +1299,36 @@ export default function App() {
     setActiveScenario(null);
     setResetToast(true);
     setTimeout(() => setResetToast(false), 4500);
+  }
+
+  async function handleAddTransactions(newTxList, merchantObservations = []) {
+    sounds.playPaySuccess();
+    const updated = [...newTxList, ...transactions];
+    setTransactions(updated);
+    setActiveScenario(null);
+
+    const payload = {
+      createdAt: new Date().toISOString(),
+      transactions: updated,
+      merchantObservations,
+      isReset: false,
+    };
+    localStorage.setItem(BRIDGE_KEY, JSON.stringify(payload));
+    window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: payload }));
+
+    try {
+      const response = await fetch(`${API}/api/trace-mule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactions: updated, merchant_observations: merchantObservations }),
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setTrace(result);
+        payload.trace = result;
+        localStorage.setItem(BRIDGE_KEY, JSON.stringify(payload));
+      }
+    } catch {}
   }
 
   function handleRestoreDemo() {
@@ -1272,7 +1362,17 @@ export default function App() {
     setSimulating(false);
     const scenario = SCENARIOS[sKey];
     if (scenario) {
-      broadcast(scenario.records, scenario.merchant ?? []);
+      const records = scenario.records;
+      const merchantObs = scenario.merchant ?? [];
+      const payload = {
+        createdAt: new Date().toISOString(),
+        transactions: records,
+        merchantObservations: merchantObs,
+        isReset: false,
+      };
+      localStorage.setItem(BRIDGE_KEY, JSON.stringify(payload));
+      window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: payload }));
+      broadcast(records, merchantObs);
     }
   }
 
@@ -1332,23 +1432,27 @@ export default function App() {
       try {
         const payload = JSON.parse(raw ?? "null");
         if (!payload) return;
-        if (Array.isArray(payload?.transactions)) {
+        if (payload.isReset) {
+          setTransactions([]);
+          setTrace({
+            nodes: [],
+            edges: [],
+            paths: [],
+            candidates: [],
+            merchant_alerts: [],
+            excluded_p2m_count: 0,
+            transaction_count: 0,
+            notice: "All synthetic transactions and paths have been reset to zero.",
+          });
+          setActiveScenario(null);
+          return;
+        }
+        if (Array.isArray(payload.transactions)) {
           setTransactions(payload.transactions);
           if (payload.trace) {
             setTrace(payload.trace);
           } else if (payload.transactions.length > 0) {
             void broadcast(payload.transactions, payload.merchantObservations ?? []);
-          } else {
-            setTrace({
-              nodes: [],
-              edges: [],
-              paths: [],
-              candidates: [],
-              merchant_alerts: [],
-              excluded_p2m_count: 0,
-              transaction_count: 0,
-              notice: "All synthetic transactions and paths have been reset.",
-            });
           }
         }
       } catch {}
@@ -1358,8 +1462,33 @@ export default function App() {
     const handleStorage = (e) => {
       if (e.key === BRIDGE_KEY && e.newValue) loadPayScenario(e.newValue);
     };
+    const handleCustom = (e) => {
+      if (e.detail) {
+        if (e.detail.isReset) {
+          setTransactions([]);
+          setTrace(e.detail.trace || {
+            nodes: [],
+            edges: [],
+            paths: [],
+            candidates: [],
+            merchant_alerts: [],
+            excluded_p2m_count: 0,
+            transaction_count: 0,
+          });
+          setActiveScenario(null);
+        } else if (Array.isArray(e.detail.transactions)) {
+          setTransactions(e.detail.transactions);
+          if (e.detail.trace) setTrace(e.detail.trace);
+          else if (e.detail.transactions.length > 0) void broadcast(e.detail.transactions);
+        }
+      }
+    };
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener("toofan-tx-update", handleCustom);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("toofan-tx-update", handleCustom);
+    };
   }, []);
 
   const navItems = [
@@ -1548,8 +1677,8 @@ export default function App() {
                 <div className="scenario-control-strip">
                   <div className="strip-top-row">
                     <div className="strip-title-group">
-                      <span className="strip-badge"><Zap size={13} /> TEST PATTERNS</span>
-                      <span className="strip-hint">Pick a pattern or click to watch the money move step-by-step:</span>
+                      <span className="strip-badge"><Sparkles size={13} /> SAMPLE DEMO PATTERNS</span>
+                      <span className="strip-hint">Click a button below to load a practice pattern (or make real payments in Google Pay):</span>
                     </div>
                     <div className="strip-actions-cluster">
                       <button
@@ -1570,9 +1699,25 @@ export default function App() {
                     </div>
                   </div>
 
+                  {transactions.length === 0 ? (
+                    <div className="status-strip-banner clean-slate">
+                      <span className="banner-dot green" />
+                      <span>
+                        <b>System in Clean Slate Mode (0 Active Transactions):</b> All transactions are reset. Send a payment in Google Pay Simulator or click a sample pattern below.
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="status-strip-banner active-mode">
+                      <span className="banner-dot blue" />
+                      <span>
+                        <b>Live Money Trails Active:</b> {transactions.length} payments tracked in memory ({money(total)}). Click <b>Reset All</b> anytime to clear everything to zero.
+                      </span>
+                    </div>
+                  )}
+
                   <div className="scenario-chips-row">
                     {Object.entries(SCENARIOS).map(([sKey, scenario]) => {
-                      const isCurrent = activeScenario === sKey;
+                      const isCurrent = activeScenario === sKey && transactions.length > 0;
                       return (
                         <button
                           key={sKey}
@@ -1581,7 +1726,7 @@ export default function App() {
                         >
                           <div className="chip-label-row">
                             <b>{scenario.label}</b>
-                            {isCurrent && <span className="chip-active-dot" />}
+                            <span className="chip-action-pill">Load Pattern →</span>
                           </div>
                           <small className="chip-desc">
                             {sKey === "candy" && "₹35 Bakery -> Fake Acc -> Hub"}
@@ -1676,6 +1821,10 @@ export default function App() {
                   onSelectNode={setSelectedNode}
                   activeHighlightEdge={activeHighlightEdge}
                   onLoadDemo={handleRestoreDemo}
+                  onOpenGPay={() => {
+                    sounds.playClick();
+                    setActiveTab("gpay");
+                  }}
                 />
 
                 {/* SELECTED NODE DOSSIER FLYOUT */}
@@ -1808,7 +1957,16 @@ export default function App() {
             {/* TAB 2: GPAY SIMULATOR */}
             {activeTab === "gpay" && (
               <div className="gpay-embedded-wrapper">
-                <PayDemo embedded={true} />
+                <PayDemo
+                  embedded={true}
+                  transactions={transactions}
+                  onAddTransactions={handleAddTransactions}
+                  onResetTransactions={handleResetTransactions}
+                  onNavigateTab={(tab) => {
+                    sounds.playClick();
+                    setActiveTab(tab);
+                  }}
+                />
               </div>
             )}
 
@@ -1827,6 +1985,10 @@ export default function App() {
                   privacy={privacy}
                   onReset={handleResetTransactions}
                   onLoadDemo={handleRestoreDemo}
+                  onOpenGPay={() => {
+                    sounds.playClick();
+                    setActiveTab("gpay");
+                  }}
                 />
               </div>
             )}
