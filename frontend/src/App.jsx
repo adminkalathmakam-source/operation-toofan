@@ -12,6 +12,7 @@ import PayDemo from "./PayDemo.jsx";
 import CashLaunderingDesk from "./CashLaunderingDesk.jsx";
 import LocationAiScanner from "./LocationAiScanner.jsx";
 import PoliceSignInModal from "./PoliceSignInModal.jsx";
+import PoliceGateScreen from "./PoliceGateScreen.jsx";
 import { translations, POLICE_DEFAULT_USER } from "./i18n.js";
 
 const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
@@ -1908,6 +1909,19 @@ export default function App() {
     { key: "ledger", label: t.navLedger, icon: Landmark },
   ];
 
+  // =========================================================================
+  // GATEKEEPER CHECK: REQUIRE KERALA POLICE SIGN IN BEFORE ACCESSING SITE
+  // =========================================================================
+  if (!policeUser) {
+    return (
+      <PoliceGateScreen
+        onAuthenticate={handlePoliceSignIn}
+        lang={lang}
+        onToggleLanguage={toggleLanguage}
+      />
+    );
+  }
+
   return (
     <div className="official-app-container">
       {/* GLOBAL TOP SCANNER LOADER */}
@@ -2070,29 +2084,29 @@ export default function App() {
             </div>
 
             <div className="topbar-right-zone">
-              {/* KERALA POLICE AUTHENTICATION BUTTON */}
-              {policeUser ? (
+              {/* KERALA POLICE ACTIVE OFFICER BADGE & QUICK SIGNOUT */}
+              <div className="police-topbar-signed-group">
                 <button
                   className="btn-police-profile-top"
                   onClick={() => { sounds.playClick(); setShowLoginModal(true); }}
-                  title="Kerala Cyber Police Active - Click to view badge or sign out"
+                  title="Kerala Cyber Police Active - Click to view ID card"
                 >
                   <ShieldCheck size={16} className="text-emerald" />
                   <div className="police-topbar-profile-info">
-                    <span className="police-tag-badge">KP CYBER</span>
+                    <span className="police-tag-badge">KP CYBER CELL</span>
                     <span className="police-officer-title">{policeUser.officerName}</span>
                   </div>
                 </button>
-              ) : (
+
                 <button
-                  className="btn-police-signin-top"
-                  onClick={() => { sounds.playClick(); setShowLoginModal(true); }}
-                  title="Kerala Police Sign In (Demo credentials: cyberpolice / toofan2026)"
+                  className="btn-quick-signout-top"
+                  onClick={() => { sounds.playClick(); handlePoliceSignOut(); }}
+                  title={lang === "ml" ? "പോലീസ് സെഷനിൽ നിന്ന് പുറത്തുകടക്കുക (Sign Out)" : "Sign Out of Police Session"}
                 >
-                  <Shield size={15} className="text-amber" />
-                  <span className="topbar-btn-text">{t.policeSignIn}</span>
+                  <LogOut size={14} />
+                  <span className="signout-btn-text">{t.signOut}</span>
                 </button>
-              )}
+              </div>
 
               {/* MALAYALAM / ENGLISH TOGGLE IN TOPBAR */}
               <button
