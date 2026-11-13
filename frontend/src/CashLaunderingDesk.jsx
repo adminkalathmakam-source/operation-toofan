@@ -21,6 +21,7 @@ export default function CashLaunderingDesk({
   onNavigateTab = null,
   privacy = false,
   initialShop = null,
+  lang = "en",
 }) {
   // Mode switcher: "instant" (1-click direct flow) | "accumulator" (collect from students until ₹1000)
   const [deskMode, setDeskMode] = useState("instant");

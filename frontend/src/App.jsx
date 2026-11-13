@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, AlertCircle, ArrowRight, BadgeAlert, Banknote, Camera, Check, CheckCircle2, ChevronRight,
   Copy, Download, Eye, FileDown, FileSpreadsheet, Fingerprint, FlaskConical,
-  GitBranch, HeartHandshake, History, Landmark, Layers, Loader2, Lock, MapPin, Menu,
+  GitBranch, HeartHandshake, History, Landmark, Languages, Layers, Loader2, Lock, LogOut, MapPin, Menu, UserCheck,
   Pause, Play, QrCode, Radio, RefreshCw, RotateCcw, Scan, Search, Shield, ShieldAlert, ShieldCheck,
   Smartphone, Sparkles, Store, SwitchCamera, Trash2, Upload, Volume2, VolumeX, Wallet, X, Zap
 } from "lucide-react";
@@ -11,6 +11,8 @@ import { sounds } from "./soundEffects";
 import PayDemo from "./PayDemo.jsx";
 import CashLaunderingDesk from "./CashLaunderingDesk.jsx";
 import LocationAiScanner from "./LocationAiScanner.jsx";
+import PoliceSignInModal from "./PoliceSignInModal.jsx";
+import { translations, POLICE_DEFAULT_USER } from "./i18n.js";
 
 const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
 const BRIDGE_KEY = "toofan-shield-demo-scenario";
@@ -1522,6 +1524,49 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("overview"); // overview | scanner | cash | gpay | evidence | ledger
   const [selectedLaunderingShop, setSelectedLaunderingShop] = useState("FORT-ROAD-BAKERY");
   const [selectedNode, setSelectedNode] = useState(null);
+
+  // Malayalam (ml) / English (en) Language Mode
+  const [lang, setLang] = useState(() => {
+    try {
+      return localStorage.getItem("toofan_app_lang") || "en";
+    } catch {
+      return "en";
+    }
+  });
+  const t = translations[lang] || translations.en;
+
+  function toggleLanguage() {
+    sounds.playClick();
+    const nextLang = lang === "en" ? "ml" : "en";
+    setLang(nextLang);
+    try {
+      localStorage.setItem("toofan_app_lang", nextLang);
+    } catch {}
+  }
+
+  // Kerala Police Officer Authentication
+  const [policeUser, setPoliceUser] = useState(() => {
+    try {
+      const raw = localStorage.getItem("toofan_police_user");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  });
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  function handlePoliceSignIn(officer) {
+    setPoliceUser(officer);
+    try {
+      localStorage.setItem("toofan_police_user", JSON.stringify(officer));
+    } catch {}
+  }
+
+  function handlePoliceSignOut() {
+    setPoliceUser(null);
+    try {
+      localStorage.removeItem("toofan_police_user");
+    } catch {}
+  }
   const [menuOpen, setMenuOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -1855,12 +1900,12 @@ export default function App() {
   }, []);
 
   const navItems = [
-    { key: "overview", label: "Money Flow Tracker", icon: Activity },
-    { key: "scanner", label: "AI Location & Shop Scanner", icon: MapPin },
-    { key: "cash", label: "Cash to Shop Laundering", icon: Banknote },
-    { key: "gpay", label: "Google Pay Simulator", icon: Smartphone },
-    { key: "evidence", label: "Evidence & Proof Vault", icon: ShieldCheck },
-    { key: "ledger", label: "Payment Records", icon: Landmark },
+    { key: "overview", label: t.navOverview, icon: Activity },
+    { key: "scanner", label: t.navScanner, icon: MapPin },
+    { key: "cash", label: t.navCash, icon: Banknote },
+    { key: "gpay", label: t.navGpay, icon: Smartphone },
+    { key: "evidence", label: t.navEvidence, icon: ShieldCheck },
+    { key: "ledger", label: t.navLedger, icon: Landmark },
   ];
 
   return (
@@ -1870,19 +1915,34 @@ export default function App() {
 
       {/* OFFICIAL HEADER BANNER */}
       <div className="official-top-banner">
-        <FlaskConical size={14} className="text-sky" />
-        <span className="banner-text-tagline">
-          <b>TOOFAN SHIELD</b>
-          <span className="banner-subtext"> · MONEY FLOW & FAKE ACCOUNT TRACKER · PRACTICE TEST DATA</span>
-        </span>
-        <button
-          className="banner-sound-switch"
-          onClick={() => setSoundEnabled(!soundEnabled)}
-          title="Toggle Sound Effects"
-        >
-          {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
-          <span className="banner-audio-label">{soundEnabled ? "Audio On" : "Audio Muted"}</span>
-        </button>
+        <div className="banner-left-brand">
+          <FlaskConical size={14} className="text-sky" />
+          <span className="banner-text-tagline">
+            <b>{t.appTitle}</b>
+            <span className="banner-subtext"> · {t.appSubtitle}</span>
+          </span>
+        </div>
+
+        <div className="banner-right-controls">
+          {/* MALAYALAM / ENGLISH LANGUAGE PILL */}
+          <button
+            className={`banner-lang-pill ${lang === "ml" ? "ml-mode" : ""}`}
+            onClick={toggleLanguage}
+            title={lang === "en" ? "മലയാളം മോഡിലേക്ക് മാറ്റുക (Switch to Malayalam)" : "Switch to English"}
+          >
+            <Languages size={13} />
+            <b>{lang === "en" ? "മലയാളം" : "English"}</b>
+          </button>
+
+          <button
+            className="banner-sound-switch"
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            title="Toggle Sound Effects"
+          >
+            {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+            <span className="banner-audio-label">{soundEnabled ? "Audio On" : "Audio Muted"}</span>
+          </button>
+        </div>
       </div>
 
       <div className="official-layout-wrapper">
@@ -1914,7 +1974,18 @@ export default function App() {
             </button>
           </div>
 
-          <div className="nav-group-header">NAVIGATION</div>
+          {/* SIDEBAR LANGUAGE SWITCHER */}
+          <div className="sidebar-lang-container">
+            <button
+              className={`sidebar-lang-toggle-btn ${lang === "ml" ? "ml-active" : ""}`}
+              onClick={toggleLanguage}
+            >
+              <Languages size={15} />
+              <span>{lang === "en" ? "മലയാളം മോഡ് (Malayalam)" : "English Mode"}</span>
+            </button>
+          </div>
+
+          <div className="nav-group-header">{t.navHeader}</div>
           <nav className="sidebar-nav-list">
             {navItems.map(({ key, label, icon: Icon }) => (
               <button
@@ -1933,7 +2004,7 @@ export default function App() {
             ))}
           </nav>
 
-          <div className="nav-group-header">VIEWING PERSPECTIVES</div>
+          <div className="nav-group-header">{t.perspectivesHeader}</div>
           <div className="sidebar-scenarios-stack">
             {Object.entries(VIEW_MODES).map(([vKey, mode]) => (
               <button
@@ -1948,7 +2019,7 @@ export default function App() {
             ))}
           </div>
 
-          <div className="nav-group-header">PRACTICE DATA & RESET</div>
+          <div className="nav-group-header">{t.practiceHeader}</div>
           <div className="sidebar-scenarios-stack">
             <button
               className="scenario-btn-item reset-btn"
@@ -1988,17 +2059,51 @@ export default function App() {
                 <span>TOOFAN Tracker</span>
                 <ChevronRight size={13} />
                 <b>
-                  {activeTab === "overview" && "Live Money Flow Map"}
-                  {activeTab === "scanner" && "AI Location & Sudden Cash Jump Radar"}
-                  {activeTab === "cash" && "Cash to Shop Laundering Desk"}
-                  {activeTab === "gpay" && "Google Pay Simulator"}
-                  {activeTab === "evidence" && "Evidence & Proof Vault"}
-                  {activeTab === "ledger" && "All Payment Records"}
+                  {activeTab === "overview" && t.crumbOverview}
+                  {activeTab === "scanner" && t.crumbScanner}
+                  {activeTab === "cash" && t.crumbCash}
+                  {activeTab === "gpay" && t.crumbGpay}
+                  {activeTab === "evidence" && t.crumbEvidence}
+                  {activeTab === "ledger" && t.crumbLedger}
                 </b>
               </div>
             </div>
 
             <div className="topbar-right-zone">
+              {/* KERALA POLICE AUTHENTICATION BUTTON */}
+              {policeUser ? (
+                <button
+                  className="btn-police-profile-top"
+                  onClick={() => { sounds.playClick(); setShowLoginModal(true); }}
+                  title="Kerala Cyber Police Active - Click to view badge or sign out"
+                >
+                  <ShieldCheck size={16} className="text-emerald" />
+                  <div className="police-topbar-profile-info">
+                    <span className="police-tag-badge">KP CYBER</span>
+                    <span className="police-officer-title">{policeUser.officerName}</span>
+                  </div>
+                </button>
+              ) : (
+                <button
+                  className="btn-police-signin-top"
+                  onClick={() => { sounds.playClick(); setShowLoginModal(true); }}
+                  title="Kerala Police Sign In (Demo credentials: cyberpolice / toofan2026)"
+                >
+                  <Shield size={15} className="text-amber" />
+                  <span className="topbar-btn-text">{t.policeSignIn}</span>
+                </button>
+              )}
+
+              {/* MALAYALAM / ENGLISH TOGGLE IN TOPBAR */}
+              <button
+                className={`btn-topbar-lang ${lang === "ml" ? "ml-active" : ""}`}
+                onClick={toggleLanguage}
+                title={lang === "en" ? "മലയാളത്തിലേക്ക് മാറ്റുക" : "Switch to English"}
+              >
+                <Languages size={14} />
+                <span className="topbar-btn-text">{lang === "en" ? "മലയാളം" : "English"}</span>
+              </button>
+
               {/* RESET TRANSACTIONS BUTTON */}
               <button
                 className="btn-topbar-reset"
@@ -2197,7 +2302,7 @@ export default function App() {
                 <div className="executive-kpi-grid">
                   <div className="kpi-card blue-theme">
                     <div className="kpi-top">
-                      <span>TOTAL MONEY TRACKED</span>
+                      <span>{t.kpiTotalMoney}</span>
                       <div className="kpi-icon-wrap blue"><Banknote size={17} /></div>
                     </div>
                     {isAnalyzing ? (
@@ -2213,7 +2318,7 @@ export default function App() {
 
                   <div className="kpi-card red-theme">
                     <div className="kpi-top">
-                      <span>FAKE ACCOUNTS (MULES)</span>
+                      <span>{t.kpiFakeAccounts}</span>
                       <div className="kpi-icon-wrap red"><BadgeAlert size={17} /></div>
                     </div>
                     {isAnalyzing ? (
@@ -2229,7 +2334,7 @@ export default function App() {
 
                   <div className="kpi-card green-theme">
                     <div className="kpi-top">
-                      <span>MONEY TRAILS FOUND</span>
+                      <span>{t.kpiMoneyTrails}</span>
                       <div className="kpi-icon-wrap green"><GitBranch size={17} /></div>
                     </div>
                     {isAnalyzing ? (
@@ -2245,7 +2350,7 @@ export default function App() {
 
                   <div className="kpi-card yellow-theme">
                     <div className="kpi-top">
-                      <span>SHOP CASH ALERTS</span>
+                      <span>{t.kpiShopAlerts}</span>
                       <div className="kpi-icon-wrap yellow"><Store size={17} /></div>
                     </div>
                     {isAnalyzing ? (
@@ -2429,6 +2534,7 @@ export default function App() {
                     sounds.playClick();
                     setActiveTab(tab);
                   }}
+                  lang={lang}
                 />
               </div>
             )}
@@ -2446,6 +2552,7 @@ export default function App() {
                   }}
                   privacy={privacy}
                   initialShop={selectedLaunderingShop}
+                  lang={lang}
                 />
               </div>
             )}
@@ -2492,6 +2599,16 @@ export default function App() {
         </div>
       </div>
 
+      {/* KERALA POLICE AUTHENTICATION MODAL */}
+      <PoliceSignInModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        policeUser={policeUser}
+        onSignIn={handlePoliceSignIn}
+        onSignOut={handlePoliceSignOut}
+        lang={lang}
+      />
+
       {/* MOBILE BOTTOM NAVIGATION DOCK */}
       <nav className="mobile-bottom-nav">
         {navItems.map(({ key, label, icon: Icon }) => (
@@ -2509,12 +2626,12 @@ export default function App() {
               {activeTab === key && <span className="bottom-nav-active-pip" />}
             </div>
             <span className="bottom-nav-label">
-              {key === "overview" && "Money Flow"}
-              {key === "scanner" && "AI Scanner"}
-              {key === "cash" && "Cash Desk"}
-              {key === "gpay" && "Google Pay"}
-              {key === "evidence" && "Proof Vault"}
-              {key === "ledger" && "Records"}
+              {key === "overview" && (lang === "ml" ? "പണവഴി" : "Money Flow")}
+              {key === "scanner" && (lang === "ml" ? "സ്കാനർ" : "AI Scanner")}
+              {key === "cash" && (lang === "ml" ? "ക്യാഷ്" : "Cash Desk")}
+              {key === "gpay" && (lang === "ml" ? "ഗൂഗിൾ പേ" : "Google Pay")}
+              {key === "evidence" && (lang === "ml" ? "തെളിവ്" : "Proof Vault")}
+              {key === "ledger" && (lang === "ml" ? "രേഖകൾ" : "Records")}
             </span>
           </button>
         ))}

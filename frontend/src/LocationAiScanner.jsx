@@ -296,6 +296,7 @@ export const SCAN_ZONES = [
 export default function LocationAiScanner({
   onSelectMerchantForLaundering = null,
   onNavigateTab = null,
+  lang = "en",
 }) {
   const [selectedZoneId, setSelectedZoneId] = useState("zone-north-campus");
   const [filterMode, setFilterMode] = useState("all"); // all | spikesOnly | bakeriesOnly
@@ -413,10 +414,11 @@ NOTICE: PRACTICE TEST DEMO ONLY - SYNTHETIC DATA.`;
         <div className="demo-alert-left">
           <ShieldAlert size={19} className="text-amber animate-pulse" />
           <div className="demo-alert-text">
-            <b>AI LOCATION SCANNER (DEMO & PRACTICE SIMULATION ONLY)</b>
+            <b>{lang === "ml" ? "എ.ഐ. ലൊക്കേഷൻ സ്കാനർ (പരിശീലന ഡെമോ സിമുലേഷൻ മാത്രം)" : "AI LOCATION SCANNER (DEMO & PRACTICE SIMULATION ONLY)"}</b>
             <span>
-              All coordinates, shop names, and cash velocity anomalies shown are synthetically generated for educational training.
-              No real individuals or legal identities are inferred.
+              {lang === "ml"
+                ? "എല്ലാ ലൊക്കേഷൻ വിവരങ്ങളും ബേക്കറി പേരുകളും പരിശീലന ആവശ്യങ്ങൾക്ക് മാത്രമായി നിർമ്മിച്ചതാണ്. യഥാർത്ഥ വിവരങ്ങളുമായി ബന്ധമില്ല."
+                : "All coordinates, shop names, and cash velocity anomalies shown are synthetically generated for educational training. No real individuals or legal identities are inferred."}
             </span>
           </div>
         </div>
@@ -453,7 +455,7 @@ NOTICE: PRACTICE TEST DEMO ONLY - SYNTHETIC DATA.`;
               ) : (
                 <>
                   <Radio size={16} />
-                  <span>Scan Selected Location Now</span>
+                  <span>{lang === "ml" ? "ഈ പ്രദേശം ഇപ്പോൾ സ്കാൻ ചെയ്യുക" : "Scan Selected Location Now"}</span>
                 </>
               )}
             </button>
@@ -531,7 +533,7 @@ NOTICE: PRACTICE TEST DEMO ONLY - SYNTHETIC DATA.`;
           <div className="radar-panel-header">
             <div className="panel-title-group">
               <Compass size={17} className="text-cyan" />
-              <h4>Simulated Sector Radar Map</h4>
+              <h4>{lang === "ml" ? "സിമുലേറ്റഡ് റഡാർ ഭൂപടം" : "Simulated Sector Radar Map"}</h4>
             </div>
             <div className="radar-status-badge">
               <span className="radar-live-dot" />
@@ -654,7 +656,7 @@ NOTICE: PRACTICE TEST DEMO ONLY - SYNTHETIC DATA.`;
           <div className="dossier-panel-header">
             <div className="panel-title-group">
               <BadgeAlert size={18} className="text-amber" />
-              <h4>AI Anomaly Forensic Profile</h4>
+              <h4>{lang === "ml" ? "എ.ഐ. അനോമലി ഫോറൻസിക് പ്രൊഫൈൽ" : "AI Anomaly Forensic Profile"}</h4>
             </div>
             {activeMerchant?.isSpike ? (
               <span className="dossier-alert-tag critical">
