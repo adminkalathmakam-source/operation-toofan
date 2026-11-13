@@ -29,6 +29,18 @@
   padding: 0;
 }
 
+html, body {
+  max-width: 100vw;
+  overflow-x: clip;
+  width: 100%;
+}
+
+@supports not (overflow-x: clip) {
+  html, body {
+    overflow-x: hidden;
+  }
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Google Sans", Inter, sans-serif;
   color: var(--text-dark);
@@ -3640,6 +3652,15 @@ button, input, select {
   border-radius: 12px;
   padding: 18px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.ledger-table-box {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ledger-toolbar-row {
@@ -3771,7 +3792,7 @@ button, input, select {
 }
 
 /* ==========================================================================
-   RESPONSIVE DESIGN BREAKPOINTS
+   RESPONSIVE DESIGN BREAKPOINTS & NATIVE MOBILE SYSTEM
    ========================================================================== */
 @media (max-width: 1024px) {
   .executive-kpi-grid { grid-template-columns: repeat(2, 1fr); }
@@ -3781,21 +3802,440 @@ button, input, select {
 }
 
 @media (max-width: 768px) {
+  /* Layout & Containers */
+  .official-app-container,
+  .official-layout-wrapper,
+  .official-main-viewport {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .official-content-scrollable {
+    padding: 12px 10px 88px 10px;
+    max-width: 100vw;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  /* Top Banner */
+  .official-top-banner {
+    padding: 6px 12px;
+    font-size: 11px;
+    gap: 8px;
+    overflow: hidden;
+  }
+  .banner-subtext {
+    display: none;
+  }
+  .banner-sound-switch {
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+
+  /* Topbar */
+  .official-topbar {
+    height: auto;
+    min-height: 52px;
+    padding: 8px 12px;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+  .topbar-left-zone {
+    gap: 8px;
+    min-width: 0;
+  }
+  .topbar-breadcrumbs {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar-breadcrumbs span {
+    display: none;
+  }
+  .topbar-right-zone {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .desktop-only-btn {
+    display: none !important;
+  }
+  .btn-topbar-reset,
+  .btn-topbar-load-demo {
+    padding: 5px 8px;
+    font-size: 11px;
+    gap: 4px;
+    border-radius: 6px;
+  }
+  .privacy-mode-pill {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+  .privacy-pill-text small {
+    display: none;
+  }
+
+  /* Mobile Drawer Sidebar & Backdrop */
   .official-sidebar {
     position: fixed;
-    top: 31px;
+    top: 0;
     bottom: 0;
     left: 0;
+    width: 285px;
+    max-width: 84vw;
+    z-index: 1001;
     transform: translateX(-100%);
-    transition: transform 0.25s ease;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 6px 0 30px rgba(0, 0, 0, 0.5);
+    padding: 18px 14px;
+    overflow-y: auto;
   }
-  .official-sidebar.open { transform: translateX(0); }
-  .btn-mobile-menu { display: block; }
-  .official-topbar { padding: 0 16px; }
-  .official-content-scrollable { padding: 16px; }
-  .gpay-appbar { padding: 0 16px; }
-  .gpay-search-box { display: none; }
-  .gpay-rewards-strip { grid-template-columns: 1fr; }
+  .official-sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-backdrop-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+  }
+  .sidebar-brand-block {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .btn-sidebar-close-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    color: #94a3b8;
+    margin-left: auto;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+  }
+  .btn-sidebar-close-mobile:hover {
+    color: #ffffff;
+    background: #1e293b;
+  }
+
+  /* Mobile Bottom Navigation Dock */
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    z-index: 999;
+    box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.07);
+    padding: 0 4px;
+  }
+  .mobile-bottom-nav-item {
+    background: transparent;
+    border: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px 2px;
+    position: relative;
+    transition: all 0.15s ease;
+  }
+  .mobile-bottom-nav-item.active {
+    color: #0284c7;
+  }
+  .bottom-nav-icon-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .bottom-nav-active-pip {
+    position: absolute;
+    bottom: -4px;
+    width: 14px;
+    height: 3px;
+    border-radius: 2px;
+    background: #0284c7;
+  }
+  .bottom-nav-label {
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  /* Overview Tab */
+  .strip-top-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .strip-actions-cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+  .btn-strip-reset,
+  .btn-strip-load-demo {
+    flex: 1 1 calc(50% - 6px);
+    justify-content: center;
+  }
+  .btn-simulation-toggle {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .scenario-chips-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .scenario-chip-card {
+    padding: 10px 12px;
+  }
+  .executive-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .kpi-card {
+    padding: 12px 14px;
+  }
+  .kpi-value {
+    font-size: 20px;
+  }
+
+  /* Topology Graph Mobile Pan */
+  .topology-svg-scroll-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+  }
+  .topology-svg-element {
+    min-width: 620px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 830 / 310;
+  }
+  .mobile-map-pan-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 650;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 4px 10px;
+    border-radius: 6px;
+    margin: 4px 10px 8px;
+  }
+  .tier-stage-labels {
+    overflow-x: auto;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 10px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tier-badge-label {
+    flex-shrink: 0;
+    font-size: 9px;
+  }
+
+  /* Dossier card & Routes */
+  .dossier-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .route-nodes-flex {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* Cash Laundering Desk */
+  .cash-desk-hero {
+    padding: 18px 14px;
+  }
+  .cash-desk-hero h2 {
+    font-size: 20px;
+  }
+  .cash-desk-hero p {
+    font-size: 12px;
+  }
+  .cash-desk-modes-bar {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+  .desk-mode-pill {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+  .pipeline-steps-grid {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .pipe-step-box {
+    width: 100%;
+    min-width: 0;
+  }
+  .pipe-arrow-divider {
+    transform: rotate(90deg);
+    text-align: center;
+    margin: -2px 0;
+  }
+  .cash-form-workspace-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .fields-dual-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .amount-chips-quick-row {
+    gap: 6px;
+  }
+  .amount-chip-btn {
+    flex: 1 1 calc(25% - 6px);
+    text-align: center;
+  }
+
+  /* Google Pay Simulator Mobile Mode */
+  .gpay-official-wrapper {
+    margin: -8px -6px;
+    width: calc(100% + 12px);
+    max-width: none;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    box-shadow: none;
+  }
+  .gpay-appbar {
+    padding: 0 12px;
+  }
+  .gpay-search-box {
+    display: none;
+  }
+  .gpay-action-tiles-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .contacts-circle-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .gpay-rewards-strip {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Evidence Photo Vault */
+  .evidence-two-col-grid {
+    grid-template-columns: 1fr;
+  }
+  .telemetry-bar-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .specimen-btn-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .btn-specimen-camera,
+  .btn-specimen-primary,
+  .btn-specimen-outline {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Ledger Table */
+  .ledger-toolbar-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .ledger-search-input-wrap {
+    min-width: 0;
+    width: 100%;
+  }
+  .ledger-filter-pills {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    width: 100%;
+  }
+  .ledger-export-actions {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+  }
+  .btn-export-file {
+    flex: 1;
+    justify-content: center;
+  }
+  .clean-data-table {
+    min-width: 580px;
+  }
+
+  /* Modals on Mobile */
+  .evidence-camera-modal {
+    width: 100%;
+    max-height: 94vh;
+    border-radius: 16px 16px 0 0;
+    margin-top: auto;
+  }
+  .gpay-bottom-sheet {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    padding: 16px 16px 24px;
+  }
+  .floating-reset-toast {
+    left: 10px;
+    right: 10px;
+    bottom: 74px;
+    max-width: calc(100% - 20px);
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-bottom-nav,
+  .btn-sidebar-close-mobile,
+  .mobile-map-pan-hint,
+  .sidebar-backdrop-overlay {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .scenario-chips-row {
+    grid-template-columns: 1fr;
+  }
+  .executive-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .topbar-btn-text {
+    display: none;
+  }
+  .contacts-circle-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 /* ==========================================================================

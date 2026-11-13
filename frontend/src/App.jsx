@@ -338,6 +338,10 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
           <span className="tier-badge-label purple"><span className="tier-dot purple" /> STEP 4 · FINAL CASHOUT HUB</span>
         </div>
 
+        <div className="mobile-map-pan-hint">
+          <span>↔ Swipe map horizontally to explore all 4 steps</span>
+        </div>
+
         {nodes.length === 0 ? (
           <div className="empty-graph-state-box">
             <div className="empty-glow-disc">
@@ -363,6 +367,7 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
             </div>
           </div>
         ) : (
+        <div className="topology-svg-scroll-container">
         <svg
           viewBox="0 0 830 310"
           className="topology-svg-element"
@@ -633,6 +638,7 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
             );
           })}
         </svg>
+        </div>
         )}
       </div>
 
@@ -1829,8 +1835,9 @@ export default function App() {
       {/* OFFICIAL HEADER BANNER */}
       <div className="official-top-banner">
         <FlaskConical size={14} className="text-sky" />
-        <span>
-          <b>TOOFAN SHIELD</b> · MONEY FLOW & FAKE ACCOUNT TRACKER · PRACTICE TEST DATA
+        <span className="banner-text-tagline">
+          <b>TOOFAN SHIELD</b>
+          <span className="banner-subtext"> · MONEY FLOW & FAKE ACCOUNT TRACKER · PRACTICE TEST DATA</span>
         </span>
         <button
           className="banner-sound-switch"
@@ -1838,21 +1845,37 @@ export default function App() {
           title="Toggle Sound Effects"
         >
           {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
-          <span>{soundEnabled ? "Audio On" : "Audio Muted"}</span>
+          <span className="banner-audio-label">{soundEnabled ? "Audio On" : "Audio Muted"}</span>
         </button>
       </div>
 
       <div className="official-layout-wrapper">
+        {/* MOBILE SIDEBAR BACKDROP */}
+        {menuOpen && (
+          <div
+            className="sidebar-backdrop-overlay"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* OFFICIAL SIDEBAR */}
         <aside className={`official-sidebar ${menuOpen ? "open" : ""}`}>
           <div className="sidebar-brand-block">
             <div className="emblem-box">
               <Shield size={22} />
             </div>
-            <div>
+            <div className="emblem-text-wrap">
               <b className="emblem-title">TOOFAN<span>SHIELD</span></b>
               <small className="emblem-subtitle">MONEY TRACKER</small>
             </div>
+            <button
+              className="btn-sidebar-close-mobile"
+              onClick={() => setMenuOpen(false)}
+              title="Close Menu"
+            >
+              <X size={18} />
+            </button>
           </div>
 
           <div className="nav-group-header">NAVIGATION</div>
@@ -1946,7 +1969,7 @@ export default function App() {
                 title="Reset all transactions to zero"
               >
                 <RotateCcw size={14} />
-                <span>Reset All</span>
+                <span className="topbar-btn-text">Reset All</span>
               </button>
 
               {/* LOAD PRACTICE DATA BUTTON */}
@@ -1956,15 +1979,15 @@ export default function App() {
                 title="Load practice sample transactions for testing"
               >
                 <Sparkles size={14} />
-                <span>Load Practice Data</span>
+                <span className="topbar-btn-text">Load Practice Data</span>
               </button>
 
               {/* STUDENT PRIVACY TOGGLE */}
               <div className="privacy-mode-pill">
                 <ShieldCheck size={16} className={privacy ? "text-emerald" : "text-muted"} />
                 <div className="privacy-pill-text">
-                  <b>Student Privacy Protection</b>
-                  <small>{privacy ? "Student names hidden (Safe)" : "Real student names shown"}</small>
+                  <b>Student Privacy</b>
+                  <small>{privacy ? "Protected" : "Real names"}</small>
                 </div>
                 <button
                   className={`privacy-toggle-btn ${privacy ? "active" : ""}`}
@@ -1978,21 +2001,21 @@ export default function App() {
 
               {/* QUICK CASH DESK SHORTCUT BUTTON */}
               <button
-                className="btn-open-cash-top"
+                className="btn-open-cash-top desktop-only-btn"
                 onClick={() => { sounds.playClick(); setActiveTab("cash"); }}
                 title="Physical Cash to Shop Laundering"
               >
                 <Banknote size={14} />
-                <span>Cash to Shop</span>
+                <span className="topbar-btn-text">Cash to Shop</span>
               </button>
 
               {/* QUICK GPAY SHORTCUT BUTTON */}
               <button
-                className="btn-open-gpay-top"
+                className="btn-open-gpay-top desktop-only-btn"
                 onClick={() => { sounds.playClick(); setActiveTab("gpay"); }}
               >
                 <Smartphone size={14} />
-                <span>Open GPay Demo</span>
+                <span className="topbar-btn-text">Open GPay Demo</span>
               </button>
             </div>
           </header>
@@ -2374,6 +2397,33 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* MOBILE BOTTOM NAVIGATION DOCK */}
+      <nav className="mobile-bottom-nav">
+        {navItems.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            className={`mobile-bottom-nav-item ${activeTab === key ? "active" : ""}`}
+            onClick={() => {
+              sounds.playClick();
+              setActiveTab(key);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            <div className="bottom-nav-icon-wrap">
+              <Icon size={19} />
+              {activeTab === key && <span className="bottom-nav-active-pip" />}
+            </div>
+            <span className="bottom-nav-label">
+              {key === "overview" && "Money Flow"}
+              {key === "cash" && "Cash Desk"}
+              {key === "gpay" && "Google Pay"}
+              {key === "evidence" && "Proof Vault"}
+              {key === "ledger" && "Records"}
+            </span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }
