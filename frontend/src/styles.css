@@ -4242,3 +4242,60 @@ button, input, select {
 }
 
 
+
+
+/* Added styling for Load Sample Data buttons & badges */
+.btn-topbar-load-demo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-topbar-load-demo:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.btn-strip-load-demo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  padding: 6px 13px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-strip-load-demo:hover {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #14532d;
+  transform: translateY(-1px);
+}
+
+.scenario-btn-item.demo-load-btn {
+  background: #0f291e;
+  border-color: #166534;
+  color: #4ade80;
+}
+
+.scenario-btn-item.demo-load-btn:hover {
+  background: #143d2c;
+  border-color: #22c55e;
+  color: #86efac;
+}

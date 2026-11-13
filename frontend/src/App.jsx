@@ -115,6 +115,29 @@ const SCENARIOS = {
   },
 };
 
+const VIEW_MODES = {
+  all: {
+    label: "🌐 Multi-Account Money Web",
+    desc: "Complete network map across all accounts & trails",
+    badge: "FULL NETWORK",
+  },
+  direct: {
+    label: "⚡ Split Transfers to Fake Acc",
+    desc: "Multiple senders routing directly to fake accounts",
+    badge: "CONVERGENCE",
+  },
+  candy: {
+    label: "🍬 Shop & QR Routing",
+    desc: "Student QR payments routed through shop to fake acc",
+    badge: "MERCHANT HOPS",
+  },
+  cashDeposit: {
+    label: "💵 Suspicious Cash Spikes",
+    desc: "High-value cash jumps and abnormal shop deposits",
+    badge: "CASH ALERTS",
+  },
+};
+
 const SIMULATION_SCRIPTS = {
   candy: [
     { edgeId: "STUDENT-014->BAKERY-QR-02", narration: "Step 1 of 4: Student-014 buys snacks at the bakery using UPI for ₹35.", sound: "click" },
@@ -1247,19 +1270,12 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const [activeScenario, setActiveScenario] = useState(() => {
-    try {
-      const raw = localStorage.getItem(BRIDGE_KEY);
-      if (raw && JSON.parse(raw).isReset) return null;
-    } catch {}
-    return "burst";
-  });
-
+  const [viewMode, setViewMode] = useState("all"); // all | direct | candy | cashDeposit
   const [simulating, setSimulating] = useState(false);
   const [simStepIndex, setSimStepIndex] = useState(0);
   const [resetToast, setResetToast] = useState(false);
 
-  const activeScript = SIMULATION_SCRIPTS[activeScenario] || SIMULATION_SCRIPTS.burst;
+  const activeScript = SIMULATION_SCRIPTS[viewMode] || SIMULATION_SCRIPTS.burst;
   const currentScriptStep = activeScript[simStepIndex] || null;
   const activeHighlightEdge = currentScriptStep?.edgeId || null;
 
@@ -1296,7 +1312,7 @@ export default function App() {
     setSelectedNode(null);
     setSimulating(false);
     setSimStepIndex(0);
-    setActiveScenario(null);
+    setViewMode("all");
     setResetToast(true);
     setTimeout(() => setResetToast(false), 4500);
   }
@@ -1305,7 +1321,7 @@ export default function App() {
     sounds.playPaySuccess();
     const updated = [...newTxList, ...transactions];
     setTransactions(updated);
-    setActiveScenario(null);
+    setViewMode("all");
 
     const payload = {
       createdAt: new Date().toISOString(),
@@ -1331,10 +1347,34 @@ export default function App() {
     } catch {}
   }
 
-  function handleRestoreDemo() {
+  function handleSelectViewMode(modeKey) {
     sounds.playClick();
-    handleSelectScenario("burst");
+    setViewMode(modeKey);
+    setSimStepIndex(0);
+    setSimulating(false);
+    setSelectedNode(null);
+  }
+
+  async function handleLoadSampleData(sKey = "burst") {
+    sounds.playClick();
+    const scenario = SCENARIOS[sKey] || SCENARIOS.burst;
+    const records = scenario.records;
+    const merchantObs = scenario.merchant ?? [];
+    const payload = {
+      createdAt: new Date().toISOString(),
+      transactions: records,
+      merchantObservations: merchantObs,
+      isReset: false,
+    };
+    localStorage.setItem(BRIDGE_KEY, JSON.stringify(payload));
+    window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: payload }));
+    await broadcast(records, merchantObs);
+    setViewMode(sKey === "candy" ? "candy" : sKey === "direct" ? "direct" : sKey === "cashDeposit" ? "cashDeposit" : "all");
     setResetToast(false);
+  }
+
+  function handleRestoreDemo() {
+    handleLoadSampleData(viewMode === "all" ? "burst" : viewMode);
   }
 
   useEffect(() => {
@@ -1356,27 +1396,16 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [simulating, simStepIndex, activeScript]);
 
-  function handleSelectScenario(sKey) {
-    setActiveScenario(sKey);
-    setSimStepIndex(0);
-    setSimulating(false);
-    const scenario = SCENARIOS[sKey];
-    if (scenario) {
-      const records = scenario.records;
-      const merchantObs = scenario.merchant ?? [];
-      const payload = {
-        createdAt: new Date().toISOString(),
-        transactions: records,
-        merchantObservations: merchantObs,
-        isReset: false,
-      };
-      localStorage.setItem(BRIDGE_KEY, JSON.stringify(payload));
-      window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: payload }));
-      broadcast(records, merchantObs);
-    }
-  }
-
   function toggleSimulation() {
+    if (transactions.length === 0) {
+      sounds.playClick();
+      handleLoadSampleData(viewMode === "all" ? "burst" : viewMode);
+      setTimeout(() => {
+        setSimStepIndex(0);
+        setSimulating(true);
+      }, 400);
+      return;
+    }
     if (simulating) {
       setSimulating(false);
     } else {
@@ -1403,7 +1432,81 @@ export default function App() {
     setSimStepIndex((prev) => Math.max(0, prev - 1));
   }
 
+  const displayTransactions = useMemo(() => {
+    if (!transactions || transactions.length === 0) return [];
+    if (viewMode === "all" || !viewMode) return transactions;
+    if (viewMode === "direct") {
+      return transactions.filter((t) => !t.is_p2m && (t.receiver.includes("FAKE-ACC") || t.receiver.includes("MULE") || t.channel === "transfer" || t.channel === "upi"));
+    }
+    if (viewMode === "candy") {
+      return transactions.filter((t) => t.is_p2m || t.channel?.includes("settle") || t.sender.includes("BAKERY") || t.receiver.includes("BAKERY") || t.sender.includes("MERCHANT") || t.receiver.includes("MERCHANT"));
+    }
+    if (viewMode === "cashDeposit") {
+      return transactions.filter((t) => t.channel?.includes("cash") || t.amount >= 1500 || t.channel?.includes("settle"));
+    }
+    return transactions;
+  }, [transactions, viewMode]);
+
+  const displayTrace = useMemo(() => {
+    if (!trace || (!trace.nodes?.length && !trace.edges?.length)) {
+      return {
+        nodes: [],
+        edges: [],
+        paths: [],
+        candidates: [],
+        merchant_alerts: [],
+        excluded_p2m_count: 0,
+        transaction_count: 0,
+        notice: "All synthetic transactions and paths have been reset to zero.",
+      };
+    }
+    if (viewMode === "all" || !viewMode) return trace;
+
+    if (viewMode === "direct") {
+      const activeEdges = (trace.edges || []).filter((e) => !e.is_p2m && !e.source.includes("BAKERY") && !e.source.includes("MERCHANT"));
+      const nodeIds = new Set();
+      activeEdges.forEach((e) => { nodeIds.add(e.source); nodeIds.add(e.target); });
+      const activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
+      const activePaths = (trace.paths || []).filter((p) => !p.some((id) => id.includes("BAKERY") || id.includes("MERCHANT")));
+      return {
+        ...trace,
+        nodes: activeNodes,
+        edges: activeEdges,
+        paths: activePaths,
+        transaction_count: activeEdges.length,
+      };
+    }
+    if (viewMode === "candy") {
+      const activeEdges = (trace.edges || []).filter((e) => e.source.includes("BAKERY") || e.target.includes("BAKERY") || e.source.includes("MERCHANT") || e.target.includes("MERCHANT") || e.channel?.includes("settle") || e.is_p2m);
+      const nodeIds = new Set();
+      activeEdges.forEach((e) => { nodeIds.add(e.source); nodeIds.add(e.target); });
+      const activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
+      const activePaths = (trace.paths || []).filter((p) => p.some((id) => id.includes("BAKERY") || id.includes("MERCHANT")));
+      return {
+        ...trace,
+        nodes: activeNodes,
+        edges: activeEdges,
+        paths: activePaths,
+        transaction_count: activeEdges.length,
+      };
+    }
+    if (viewMode === "cashDeposit") {
+      const activeEdges = (trace.edges || []).filter((e) => (e.amount || 0) >= 1500 || e.channel?.includes("cash"));
+      const nodeIds = new Set();
+      activeEdges.forEach((e) => { nodeIds.add(e.source); nodeIds.add(e.target); });
+      const activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
+      return {
+        ...trace,
+        nodes: activeNodes,
+        edges: activeEdges,
+        transaction_count: activeEdges.length,
+      };
+    }
+    return trace;
+  }, [trace, viewMode]);
+
   const total = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+  const displayTotal = displayTransactions.reduce((sum, tx) => sum + (tx.amount || 0), 0);
 
   useEffect(() => {
     sounds.muted = !soundEnabled;
@@ -1444,7 +1547,7 @@ export default function App() {
             transaction_count: 0,
             notice: "All synthetic transactions and paths have been reset to zero.",
           });
-          setActiveScenario(null);
+          setViewMode("all");
           return;
         }
         if (Array.isArray(payload.transactions)) {
@@ -1475,7 +1578,7 @@ export default function App() {
             excluded_p2m_count: 0,
             transaction_count: 0,
           });
-          setActiveScenario(null);
+          setViewMode("all");
         } else if (Array.isArray(e.detail.transactions)) {
           setTransactions(e.detail.transactions);
           if (e.detail.trace) setTrace(e.detail.trace);
@@ -1548,25 +1651,38 @@ export default function App() {
             ))}
           </nav>
 
-          <div className="nav-group-header">QUICK TEST SCENARIOS</div>
+          <div className="nav-group-header">VIEWING PERSPECTIVES</div>
           <div className="sidebar-scenarios-stack">
-            {Object.entries(SCENARIOS).map(([sKey, scenario]) => (
+            {Object.entries(VIEW_MODES).map(([vKey, mode]) => (
               <button
-                key={sKey}
-                className={`scenario-btn-item ${activeScenario === sKey ? "active" : ""}`}
-                onClick={() => handleSelectScenario(sKey)}
+                key={vKey}
+                className={`scenario-btn-item ${viewMode === vKey ? "active" : ""}`}
+                onClick={() => handleSelectViewMode(vKey)}
+                title={`Switch viewing mode to ${mode.label}`}
               >
-                <Play size={12} />
-                <span>{scenario.label}</span>
+                <Eye size={12} />
+                <span>{mode.label}</span>
               </button>
             ))}
+          </div>
+
+          <div className="nav-group-header">PRACTICE DATA & RESET</div>
+          <div className="sidebar-scenarios-stack">
             <button
               className="scenario-btn-item reset-btn"
               onClick={handleResetTransactions}
               title="Reset all transactions to zero"
             >
               <RotateCcw size={12} />
-              <span>Reset Transactions</span>
+              <span>Reset All (Clean Slate)</span>
+            </button>
+            <button
+              className="scenario-btn-item demo-load-btn"
+              onClick={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
+              title="Load sample practice transactions for testing"
+            >
+              <Sparkles size={12} />
+              <span>Load Practice Demo Data</span>
             </button>
           </div>
 
@@ -1606,7 +1722,17 @@ export default function App() {
                 title="Reset all transactions to zero"
               >
                 <RotateCcw size={14} />
-                <span>Reset Transactions</span>
+                <span>Reset All</span>
+              </button>
+
+              {/* LOAD PRACTICE DATA BUTTON */}
+              <button
+                className="btn-topbar-load-demo"
+                onClick={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
+                title="Load practice sample transactions for testing"
+              >
+                <Sparkles size={14} />
+                <span>Load Practice Data</span>
               </button>
 
               {/* STUDENT PRIVACY TOGGLE */}
@@ -1673,12 +1799,12 @@ export default function App() {
             {/* TAB 1: COMMAND OVERVIEW */}
             {activeTab === "overview" && (
               <div className="overview-page-wrapper">
-                {/* INTERACTIVE SCENARIO ENGINE & AUTOMATED SIMULATION STRIP */}
+                {/* INTERACTIVE VIEWING MODES STRIP */}
                 <div className="scenario-control-strip">
                   <div className="strip-top-row">
                     <div className="strip-title-group">
-                      <span className="strip-badge"><Sparkles size={13} /> SAMPLE DEMO PATTERNS</span>
-                      <span className="strip-hint">Click a button below to load a practice pattern (or make real payments in Google Pay):</span>
+                      <span className="strip-badge"><Eye size={13} /> TRANSACTION VIEWING MODES</span>
+                      <span className="strip-hint">Select a viewing perspective for your transactions:</span>
                     </div>
                     <div className="strip-actions-cluster">
                       <button
@@ -1688,6 +1814,14 @@ export default function App() {
                       >
                         <RotateCcw size={13} />
                         <span>Reset All</span>
+                      </button>
+                      <button
+                        className="btn-strip-load-demo"
+                        onClick={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
+                        title="Load practice test transactions"
+                      >
+                        <Sparkles size={13} />
+                        <span>Load Practice Data</span>
                       </button>
                       <button
                         className={`btn-simulation-toggle ${simulating ? "running" : ""}`}
@@ -1703,37 +1837,32 @@ export default function App() {
                     <div className="status-strip-banner clean-slate">
                       <span className="banner-dot green" />
                       <span>
-                        <b>System in Clean Slate Mode (0 Active Transactions):</b> All transactions are reset. Send a payment in Google Pay Simulator or click a sample pattern below.
+                        <b>System in Clean Slate Mode (0 Active Transactions):</b> Switching viewing modes stays at 0. Record a payment in Google Pay Simulator or click <b>Load Practice Data</b>.
                       </span>
                     </div>
                   ) : (
                     <div className="status-strip-banner active-mode">
                       <span className="banner-dot blue" />
                       <span>
-                        <b>Live Money Trails Active:</b> {transactions.length} payments tracked in memory ({money(total)}). Click <b>Reset All</b> anytime to clear everything to zero.
+                        <b>Live Money Trails Active:</b> Showing {displayTransactions.length} of {transactions.length} payments ({money(displayTotal)}). Click <b>Reset All</b> anytime to clear.
                       </span>
                     </div>
                   )}
 
                   <div className="scenario-chips-row">
-                    {Object.entries(SCENARIOS).map(([sKey, scenario]) => {
-                      const isCurrent = activeScenario === sKey && transactions.length > 0;
+                    {Object.entries(VIEW_MODES).map(([vKey, mode]) => {
+                      const isCurrent = viewMode === vKey;
                       return (
                         <button
-                          key={sKey}
-                          className={`scenario-chip-card theme-${sKey} ${isCurrent ? "active" : ""}`}
-                          onClick={() => handleSelectScenario(sKey)}
+                          key={vKey}
+                          className={`scenario-chip-card theme-${vKey} ${isCurrent ? "active" : ""}`}
+                          onClick={() => handleSelectViewMode(vKey)}
                         >
                           <div className="chip-label-row">
-                            <b>{scenario.label}</b>
-                            <span className="chip-action-pill">Load Pattern →</span>
+                            <b>{mode.label}</b>
+                            {isCurrent && <span className="chip-active-dot" />}
                           </div>
-                          <small className="chip-desc">
-                            {sKey === "candy" && "₹35 Bakery -> Fake Acc -> Hub"}
-                            {sKey === "direct" && "3 Students -> Fake Acc 4C"}
-                            {sKey === "burst" && "7 accounts moving money together"}
-                            {sKey === "cashDeposit" && "4.5x shop cash jump alert"}
-                          </small>
+                          <small className="chip-desc">{mode.desc}</small>
                         </button>
                       );
                     })}
@@ -1767,9 +1896,9 @@ export default function App() {
                       <span>TOTAL MONEY TRACKED</span>
                       <div className="kpi-icon-wrap blue"><Banknote size={17} /></div>
                     </div>
-                    <div className="kpi-value">{money(total)}</div>
+                    <div className="kpi-value">{money(displayTotal)}</div>
                     <div className="kpi-sub">
-                      Across {transactions.length} payments tracked
+                      Across {displayTransactions.length} payments tracked
                       <span className="kpi-status-tag green">● Live Stream</span>
                     </div>
                   </div>
@@ -1779,7 +1908,7 @@ export default function App() {
                       <span>FAKE ACCOUNTS (MULES)</span>
                       <div className="kpi-icon-wrap red"><BadgeAlert size={17} /></div>
                     </div>
-                    <div className="kpi-value text-red">{trace.candidates?.length ?? 0}</div>
+                    <div className="kpi-value text-red">{displayTrace.candidates?.length ?? 0}</div>
                     <div className="kpi-sub">
                       Accounts collecting money from multiple people
                       <span className="kpi-status-tag red">● High Risk</span>
@@ -1791,7 +1920,7 @@ export default function App() {
                       <span>MONEY TRAILS FOUND</span>
                       <div className="kpi-icon-wrap green"><GitBranch size={17} /></div>
                     </div>
-                    <div className="kpi-value">{trace.paths?.length ?? 0}</div>
+                    <div className="kpi-value">{displayTrace.paths?.length ?? 0}</div>
                     <div className="kpi-sub">
                       Step-by-step payment paths traced
                       <span className="kpi-status-tag blue">● Traced</span>
@@ -1804,7 +1933,7 @@ export default function App() {
                       <div className="kpi-icon-wrap yellow"><Store size={17} /></div>
                     </div>
                     <div className="kpi-value text-yellow">
-                      {trace.merchant_alerts?.filter((a) => a.status === "unusual-receipts-review").length ?? 0}
+                      {displayTrace.merchant_alerts?.filter((a) => a.status === "unusual-receipts-review").length ?? 0}
                     </div>
                     <div className="kpi-sub">
                       Shops with sudden cash jumps
@@ -1815,12 +1944,12 @@ export default function App() {
 
                 {/* OFFICIAL TOPOLOGY GRAPH */}
                 <OfficialTopologyGraph
-                  trace={trace}
+                  trace={displayTrace}
                   privacy={privacy}
                   selectedNode={selectedNode}
                   onSelectNode={setSelectedNode}
                   activeHighlightEdge={activeHighlightEdge}
-                  onLoadDemo={handleRestoreDemo}
+                  onLoadDemo={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
                   onOpenGPay={() => {
                     sounds.playClick();
                     setActiveTab("gpay");
@@ -1872,18 +2001,18 @@ export default function App() {
                 )}
 
                 {/* CONNECTED SEQUENCES LIST */}
-                {trace.paths?.length > 0 && (
+                {displayTrace.paths?.length > 0 && (
                   <div className="flow-sequences-card">
                     <div className="flow-sequences-header">
                       <div className="header-icon-title">
                         <Layers size={16} />
-                        <h4>Discovered Money Trails ({trace.paths.length})</h4>
+                        <h4>Discovered Money Trails ({displayTrace.paths.length})</h4>
                       </div>
                       <span className="tag-pill-sub">STEP-BY-STEP TRAILS</span>
                     </div>
 
                     <div className="routes-stack">
-                      {trace.paths.slice(0, 4).map((path, idx) => (
+                      {displayTrace.paths.slice(0, 4).map((path, idx) => (
                         <div key={idx} className="route-chain-row">
                           <span className="route-index-badge">TRAIL #{idx + 1}</span>
                           <div className="route-nodes-flex">
@@ -1904,7 +2033,7 @@ export default function App() {
                 )}
 
                 {/* MERCHANT VARIANCE REVIEW */}
-                {(trace.merchant_alerts ?? []).length > 0 && (
+                {(displayTrace.merchant_alerts ?? []).length > 0 && (
                   <div className="merchant-variance-card">
                     <div className="variance-header-row">
                       <div className="header-icon-title">
@@ -1915,7 +2044,7 @@ export default function App() {
                     </div>
 
                     <div className="variance-rows-list">
-                      {trace.merchant_alerts.map((alert, i) => {
+                      {displayTrace.merchant_alerts.map((alert, i) => {
                         const isUnusual = alert.status === "unusual-receipts-review";
                         return (
                           <div
@@ -1981,10 +2110,10 @@ export default function App() {
             {activeTab === "ledger" && (
               <div className="ledger-page-wrapper">
                 <OfficialTransactionLedger
-                  transactions={transactions}
+                  transactions={displayTransactions}
                   privacy={privacy}
                   onReset={handleResetTransactions}
-                  onLoadDemo={handleRestoreDemo}
+                  onLoadDemo={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
                   onOpenGPay={() => {
                     sounds.playClick();
                     setActiveTab("gpay");

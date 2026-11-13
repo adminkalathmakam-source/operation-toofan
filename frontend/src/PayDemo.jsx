@@ -28,10 +28,10 @@ const RECENT_CONTACTS = [
 ];
 
 const PRESETS = [
-  { id: "candy", label: "🍬 Candy Shop Trick", desc: "Student pays ₹35 at Bakery -> money forwarded to Fake Acc & Cashout Hub" },
-  { id: "direct", label: "⚡ Split Transfers", desc: "Multiple student transfers gathered into Fake Acc 7A" },
-  { id: "burst", label: "🌐 Fast Multi-Hop Burst", desc: "7 payments sent through fake accounts to final hub" },
-  { id: "cash", label: "💵 Suspicious Cash Spike", desc: "Shop deposits unusual cash into bank account" },
+  { id: "candy", label: "🍬 Candy Shop (₹35)", desc: "Pre-fill: Student pays ₹35 at Bakery -> money forwarded to Fake Acc" },
+  { id: "direct", label: "⚡ Split Transfer (₹700)", desc: "Pre-fill: Student transfer of ₹700 to Fake Acc 7A" },
+  { id: "burst", label: "🌐 Send 7 Test Payments", desc: "Simulate 7 test payments through fake accounts to final hub" },
+  { id: "cash", label: "💵 Shop Cash Desk (₹900)", desc: "Open Shop Cash Counter desk" },
 ];
 
 export default function PayDemo({
@@ -146,7 +146,7 @@ export default function PayDemo({
           isReset: true,
         }));
         await fetch(`${API}/api/reset`, { method: "POST" });
-        window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: { transactions: [], trace: emptyTrace } }));
+        window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: { transactions: [], trace: emptyTrace, isReset: true } }));
       } catch {}
     }
     setStatus("✨ All transactions have been reset to zero.");
@@ -423,7 +423,7 @@ export default function PayDemo({
 
         {/* 1-CLICK TEST SCENARIO CHIPS */}
         <div className="preset-chips-row">
-          <span className="preset-title"><Zap size={13} /> Quick Scenarios:</span>
+          <span className="preset-title"><Zap size={13} /> Quick Pay Helpers:</span>
           {PRESETS.map((p) => (
             <button
               key={p.id}
