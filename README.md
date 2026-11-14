@@ -120,6 +120,43 @@ Once deployed, your live Render URL (e.g., `https://toofan-shield.onrender.com`)
 
 Run a scenario on `/pay` and open the dashboard in the same browser to see connected transaction sequences. Scenario records pass between pages using local browser storage and to the local API. For browser access from a different origin, configure `TOOFAN_ALLOWED_ORIGINS` as a comma-separated environment variable. The default allows localhost Vite development ports only.
 
+## 🌟 Upgraded Capabilities (BNSS 2023, BSA 2023 & NDPS Act Compliance)
+
+The platform has been enhanced to address 5 critical legal, financial, and operational loopholes:
+
+### 1. Physical Cash & No-Bill Shop Detection (Module 1 & 3)
+- **GPS Hotspot Spatial Clustering:** Logs student physical cash handovers with GPS coordinates, shop name, and UPI QR ID. Backend clusters reports using a 50m Haversine radius and 30-day sliding window, automatically flagging shops in pulsating **RED as "High-Risk Cash Choke Points"** once 3+ independent student reports converge.
+- **ATM Cash Deposit (CDM) ➔ UPI Loop Detector:** Scans bank transaction streams for smurfing patterns where cash is deposited via Cash Deposit Machines (CDM), micro-ATM agents, or AEPS, and swept out via UPI/IMPS within 15–60 minutes (structured under ₹10,000 or ₹50,000). Visualized with glowing amber nodes in the topology graph.
+
+### 2. Commingled Business "Stock vs. Deposit" Auditor (Module 1)
+- **Front-Shop Audit Tool:** Evaluates wholesale purchase stock invoices against actual bank cash/UPI deposits over the same period.
+- **Phantom Revenue Detection:** Flags anomalies when bank deposits exceed plausible retail margins (e.g. ₹2,15,000 deposits against ₹20,000 wholesale stock) or transfers occur during off-hours (12:00 AM – 4:00 AM).
+- **Section 68J NDPS Legal Notice:** Triggers a statutory indicator under **Section 68J of the NDPS Act (Reverse Burden of Proof)**, placing the legal onus on the suspect to prove legitimate commercial origins.
+
+### 3. Field Protocol Wizard Upgraded to BNSS 2023, BSA 2023 & Full NDPS Compliance (Module 2)
+- **Full NDPS & BNSS 7-Point Checklist:** Enforces mandatory procedural compliance:
+  1. *Section 42 NDPS:* Written grounds of belief recorded prior to search (Sunset-to-Sunrise mandate).
+  2. *Section 42 NDPS:* Recorded grounds dispatched to superior officer within 72 hours.
+  3. *Section 50 NDPS:* Accused formally apprised in writing of right to be searched before Gazetted Officer / Magistrate.
+  4. *Section 50 NDPS:* Female suspect searched strictly and exclusively by a female officer.
+  5. *Section 52A NDPS:* Contraband inventory prepared and submitted before Judicial Magistrate for sampling certification.
+  6. *Section 105 BNSS:* Mandatory continuous audio-video recording of search and seizure.
+  7. *Section 74 JJ Act:* Child identity cryptographic token generated with zero minor personal details disclosed.
+- **Client-Side SHA-256 Hashing:** Uses the browser WebCrypto API to fingerprint seizure videos (Sec 105 BNSS) and photos locally with GPS fix and ISO timestamp without uploading media bytes.
+- **Statutory Section 63 BSA 2023 Certificate:** Auto-generates a court-ready Electronic Evidence Certificate under **Section 63 Bharatiya Sakshya Adhiniyam, 2023** embedded in the Remand & Seizure Memo PDF.
+
+### 4. 1-Click Section 94 BNSS Bank Requisition Generator (Module 1)
+- Added **"Generate Section 94 BNSS Notice"** buttons next to every flagged UPI VPA, bank account, or shop QR in the graph, transaction ledger, and AI scanner.
+- Auto-generates a formal police requisition PDF addressed to the Bank Nodal Officer / NPCI under **Section 94 of the Bharatiya Nagarik Suraksha Sanhita (BNSS), 2023**, demanding KYC records and 90-day CSV transaction logs.
+
+### 5. Section 74 JJ Act Child Pseudonymisation & Role-Based Privacy (Module 3)
+- Cryptographic pseudonym tokenization (`STU-TOKEN-XXXX`) for all student records.
+- **Header Role Switcher:**
+  - **🛡️ DANSAF / Excise Analyst Mode:** Completely masks student name, phone number, school, and photo, exposing only the token, GPS handover location, and suspect supplier links.
+  - **🤝 CWC / Vimukthi Counsellor Mode:** Decrypts student identities for Child Welfare Committee (CWC) legal care, psychosocial counselling, and Vimukthi rehabilitation tracking.
+
+---
+
 ## Demo operations
 
 - Use the preset buttons to create fictional transactions and send them to `/api/trace-mule`.

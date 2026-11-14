@@ -26,6 +26,11 @@ ROOT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = ROOT_DIR / "backend"
 FRONTEND_DIR = ROOT_DIR / "frontend"
 
+# Ensure local portable node is discovered if present on system
+NODE_PORTABLE_DIR = Path(r"D:\tools\node")
+if NODE_PORTABLE_DIR.exists() and str(NODE_PORTABLE_DIR) not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = f"{NODE_PORTABLE_DIR};" + os.environ.get("PATH", "")
+
 BACKEND_HOST = "127.0.0.1"
 BACKEND_PORT = 8000
 FRONTEND_HOST = "127.0.0.1"
