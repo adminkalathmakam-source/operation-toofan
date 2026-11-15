@@ -239,8 +239,28 @@ export default function PayDemo({
 
     const numAmount = Number(amount) || 50;
     const cleanSender = sender.trim().toUpperCase() || "STUDENT-014";
-    const cleanReceiver = recipient.trim();
-    const isP2M = recipient.toLowerCase().includes("bakery") || recipient.toLowerCase().includes("canteen");
+
+    let cleanReceiver = recipient.trim();
+    const rLower = cleanReceiver.toLowerCase();
+    if (rLower.includes("bakery") || rLower.includes("fort road")) {
+      cleanReceiver = "BAKERY-QR-02";
+    } else if (rLower.includes("canteen")) {
+      cleanReceiver = "CANTEEN-QR-01";
+    } else if (rLower.includes("fakeacc7a") || rLower.includes("7a")) {
+      cleanReceiver = "FAKE-ACC-7A";
+    } else if (rLower.includes("fakeacc8b") || rLower.includes("8b")) {
+      cleanReceiver = "FAKE-ACC-8B";
+    } else if (rLower.includes("cashout") || rLower.includes("hub")) {
+      cleanReceiver = "CASHOUT-HUB";
+    } else if (rLower.includes("student28") || rLower.includes("aarav")) {
+      cleanReceiver = "STUDENT-028";
+    } else if (rLower.includes("student31") || rLower.includes("pooja")) {
+      cleanReceiver = "STUDENT-031";
+    } else {
+      cleanReceiver = cleanReceiver.toUpperCase();
+    }
+
+    const isP2M = cleanReceiver.includes("BAKERY") || cleanReceiver.includes("CANTEEN") || cleanReceiver.includes("MERCHANT");
 
     const txId = `UPI/${Math.floor(100000000000 + Math.random() * 900000000000)}/PAY`;
     setLastTxId(txId);
@@ -260,14 +280,12 @@ export default function PayDemo({
     await new Promise((r) => setTimeout(r, 450));
     setPayProgressStage("authorizing");
 
-    // Broadcast live over WebSockets to PC and other connected devices
-    try {
-      await syncClient.sendTransactions(generatedTx, "mobile-gpay");
-    } catch {}
-
     if (typeof onAddTransactions === "function") {
       await onAddTransactions(generatedTx, []);
     } else {
+      try {
+        await syncClient.sendTransactions(generatedTx, "mobile-gpay");
+      } catch {}
       try {
         const raw = localStorage.getItem(BRIDGE_KEY);
         const stored = JSON.parse(raw ?? "{}");
@@ -323,14 +341,12 @@ export default function PayDemo({
       observed_daily_receipts: observedValue,
     }];
 
-    // Broadcast cash deposit live over WebSockets to PC and other devices
-    try {
-      await syncClient.sendTransactions(generatedTx, "mobile-cash");
-    } catch {}
-
     if (typeof onAddTransactions === "function") {
       await onAddTransactions(generatedTx, merchantObservations);
     } else {
+      try {
+        await syncClient.sendTransactions(generatedTx, "mobile-cash");
+      } catch {}
       try {
         const raw = localStorage.getItem(BRIDGE_KEY);
         const stored = JSON.parse(raw ?? "{}");

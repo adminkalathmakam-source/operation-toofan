@@ -252,7 +252,7 @@ def _compute_state_trace(records: list[dict], merchant_obs: list[dict]) -> dict:
 
 
 DEFAULT_TRANSACTIONS = [
-    {"sender": "STUDENT-014", "receiver": "BAKERY-QR-02", "amount": 35, "channel": "upi", "is_p2m": True, "reference_id": "UPI-TXN-001"},
+    {"sender": "STUDENT-014", "receiver": "BAKERY-QR-02", "amount": 3400, "channel": "upi", "is_p2m": True, "reference_id": "UPI-TXN-001"},
     {"sender": "BAKERY-QR-02", "receiver": "FAKE-ACC-7A", "amount": 3400, "channel": "merchant-settlement", "is_p2m": False, "reference_id": "STTL-TXN-002"},
     {"sender": "STUDENT-028", "receiver": "FAKE-ACC-7A", "amount": 950, "channel": "upi", "is_p2m": False, "reference_id": "UPI-TXN-003"},
     {"sender": "STUDENT-031", "receiver": "FAKE-ACC-7A", "amount": 1250, "channel": "upi", "is_p2m": False, "reference_id": "UPI-TXN-004"},
@@ -327,9 +327,7 @@ async def get_sync_state() -> dict:
     }
 
 
-@app.post("/api/sync/transactions")
-async def add_sync_transactions(req: SyncTxRequest) -> dict:
-    new_dicts = [item.model_dump() for item in req.transactions]
+async def _append_and_broadcast_transactions(new_dicts: list[dict], source: str) -> dict:
     if not new_dicts:
         return {"status": "no_op", "version": SHARED_STATE["version"]}
 
@@ -337,11 +335,34 @@ async def add_sync_transactions(req: SyncTxRequest) -> dict:
         SHARED_STATE["transactions"] = []
         SHARED_STATE["is_reset"] = False
 
-    # Deduplicate by reference_id
+    # Strictly deduplicate by reference_id and composite key
     existing_refs = {t.get("reference_id") for t in SHARED_STATE["transactions"] if t.get("reference_id")}
-    filtered = [t for t in new_dicts if not (t.get("reference_id") and t.get("reference_id") in existing_refs)]
+    existing_keys = {
+        (t.get("sender"), t.get("receiver"), float(t.get("amount", 0)), t.get("reference_id"))
+        for t in SHARED_STATE["transactions"]
+    }
+
+    filtered = []
+    for item in new_dicts:
+        ref = item.get("reference_id")
+        key = (item.get("sender"), item.get("receiver"), float(item.get("amount", 0)), ref)
+        if ref and ref in existing_refs:
+            continue
+        if key in existing_keys:
+            continue
+        filtered.append(item)
+        if ref:
+            existing_refs.add(ref)
+        existing_keys.add(key)
+
     if not filtered:
-        filtered = new_dicts
+        # All incoming transactions already recorded! Do not duplicate!
+        return {
+            "status": "already_synced",
+            "version": SHARED_STATE["version"],
+            "connected_devices": len(manager.active_connections),
+            "count": len(SHARED_STATE["transactions"]),
+        }
 
     SHARED_STATE["transactions"].extend(filtered)
     if len(SHARED_STATE["transactions"]) > 300:
@@ -360,7 +381,7 @@ async def add_sync_transactions(req: SyncTxRequest) -> dict:
         "version": SHARED_STATE["version"],
         "connected_devices": len(manager.active_connections),
         "new_transactions": filtered,
-        "source": req.source,
+        "source": source,
     })
     return {
         "status": "synced",
@@ -368,6 +389,12 @@ async def add_sync_transactions(req: SyncTxRequest) -> dict:
         "connected_devices": len(manager.active_connections),
         "count": len(SHARED_STATE["transactions"]),
     }
+
+
+@app.post("/api/sync/transactions")
+async def add_sync_transactions(req: SyncTxRequest) -> dict:
+    new_dicts = [item.model_dump() for item in req.transactions]
+    return await _append_and_broadcast_transactions(new_dicts, req.source)
 
 
 @app.post("/api/sync/reset")
@@ -460,24 +487,7 @@ async def websocket_sync(websocket: WebSocket):
                 txs = data.get("transactions", [])
                 source = data.get("source", "mobile")
                 if txs:
-                    if SHARED_STATE["is_reset"]:
-                        SHARED_STATE["transactions"] = []
-                        SHARED_STATE["is_reset"] = False
-                    SHARED_STATE["transactions"].extend(txs)
-                    SHARED_STATE["trace"] = _compute_state_trace(
-                        SHARED_STATE["transactions"], SHARED_STATE["merchant_observations"]
-                    )
-                    SHARED_STATE["version"] += 1
-                    SHARED_STATE["last_updated"] = time.time()
-                    await manager.broadcast({
-                        "type": "TX_UPDATE",
-                        "transactions": SHARED_STATE["transactions"],
-                        "trace": SHARED_STATE["trace"],
-                        "version": SHARED_STATE["version"],
-                        "connected_devices": len(manager.active_connections),
-                        "new_transactions": txs,
-                        "source": source,
-                    })
+                    await _append_and_broadcast_transactions(txs, source)
             elif m_type == "RESET":
                 SHARED_STATE["transactions"] = []
                 SHARED_STATE["is_reset"] = True

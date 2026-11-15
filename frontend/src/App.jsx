@@ -20,7 +20,7 @@ const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://local
 const BRIDGE_KEY = "toofan-shield-demo-scenario";
 
 const initialTransactions = [
-  { sender: "STUDENT-014", receiver: "BAKERY-QR-02", amount: 35, channel: "upi", is_p2m: true, reference_id: "UPI-TXN-001" },
+  { sender: "STUDENT-014", receiver: "BAKERY-QR-02", amount: 3400, channel: "upi", is_p2m: true, reference_id: "UPI-TXN-001" },
   { sender: "BAKERY-QR-02", receiver: "FAKE-ACC-7A", amount: 3400, channel: "merchant-settlement", is_p2m: false, reference_id: "STTL-TXN-002" },
   { sender: "STUDENT-028", receiver: "FAKE-ACC-7A", amount: 950, channel: "upi", is_p2m: false, reference_id: "UPI-TXN-003" },
   { sender: "STUDENT-031", receiver: "FAKE-ACC-7A", amount: 1250, channel: "upi", is_p2m: false, reference_id: "UPI-TXN-004" },
@@ -31,17 +31,17 @@ const initialTransactions = [
 
 const initialTrace = {
   nodes: [
-    { id: "STUDENT-014", incoming: 0, outgoing: 1, total_received: 0, total_sent: 35, role: "account" },
+    { id: "STUDENT-014", incoming: 0, outgoing: 1, total_received: 0, total_sent: 3400, role: "account" },
     { id: "STUDENT-028", incoming: 0, outgoing: 1, total_received: 0, total_sent: 950, role: "account" },
     { id: "STUDENT-031", incoming: 0, outgoing: 1, total_received: 0, total_sent: 1250, role: "account" },
     { id: "STUDENT-044", incoming: 0, outgoing: 1, total_received: 0, total_sent: 600, role: "account" },
-    { id: "BAKERY-QR-02", incoming: 1, outgoing: 1, total_received: 35, total_sent: 3400, role: "account" },
+    { id: "BAKERY-QR-02", incoming: 1, outgoing: 1, total_received: 3400, total_sent: 3400, role: "account" },
     { id: "FAKE-ACC-7A", incoming: 3, outgoing: 1, total_received: 5600, total_sent: 5600, role: "possible-convergence" },
     { id: "FAKE-ACC-8B", incoming: 1, outgoing: 1, total_received: 600, total_sent: 600, role: "account" },
     { id: "CASHOUT-HUB", incoming: 2, outgoing: 0, total_received: 6200, total_sent: 0, role: "destination" },
   ],
   edges: [
-    { source: "STUDENT-014", target: "BAKERY-QR-02", amount: 35 },
+    { source: "STUDENT-014", target: "BAKERY-QR-02", amount: 3400 },
     { source: "BAKERY-QR-02", target: "FAKE-ACC-7A", amount: 3400 },
     { source: "STUDENT-028", target: "FAKE-ACC-7A", amount: 950 },
     { source: "STUDENT-031", target: "FAKE-ACC-7A", amount: 1250 },
@@ -96,7 +96,7 @@ const SCENARIOS = {
   burst: {
     label: "🌐 Multi-Account Money Web",
     records: [
-      { sender: "STUDENT-014", receiver: "BAKERY-QR-02", amount: 35, channel: "upi", is_p2m: true, reference_id: "UPI-TXN-001" },
+      { sender: "STUDENT-014", receiver: "BAKERY-QR-02", amount: 3400, channel: "upi", is_p2m: true, reference_id: "UPI-TXN-001" },
       { sender: "BAKERY-QR-02", receiver: "FAKE-ACC-7A", amount: 3400, channel: "merchant-settlement", is_p2m: false, reference_id: "STTL-TXN-002" },
       { sender: "STUDENT-028", receiver: "FAKE-ACC-7A", amount: 950, channel: "upi", is_p2m: false, reference_id: "UPI-TXN-003" },
       { sender: "STUDENT-031", receiver: "FAKE-ACC-7A", amount: 1250, channel: "upi", is_p2m: false, reference_id: "UPI-TXN-004" },
@@ -1886,6 +1886,41 @@ export default function App() {
   const total = transactions.reduce((sum, tx) => sum + tx.amount, 0);
   const displayTotal = displayTransactions.reduce((sum, tx) => sum + (tx.amount || 0), 0);
 
+  // True unique money volume tracked (net funds entering / reaching terminal destination)
+  const trackedUniqueVolume = useMemo(() => {
+    if (!displayTrace.edges || displayTrace.edges.length === 0) return 0;
+
+    const outDegreeMap = new Map();
+    const inAmountMap = new Map();
+    displayTrace.edges.forEach((e) => {
+      outDegreeMap.set(e.source, (outDegreeMap.get(e.source) || 0) + 1);
+      inAmountMap.set(e.target, (inAmountMap.get(e.target) || 0) + (Number(e.amount) || 0));
+    });
+
+    // Check terminal destinations (CASHOUT-HUB, etc. where all gathered money lands)
+    const sinkTotal = (displayTrace.nodes || [])
+      .filter((n) => (outDegreeMap.get(n.id) || 0) === 0 && (inAmountMap.get(n.id) || 0) > 0)
+      .reduce((sum, n) => sum + (inAmountMap.get(n.id) || 0), 0);
+
+    if (sinkTotal && sinkTotal > 0) {
+      return sinkTotal;
+    }
+
+    // Fallback: sum of origin accounts (students / cash depositors)
+    const inDegreeMap = new Map();
+    const outAmountMap = new Map();
+    displayTrace.edges.forEach((e) => {
+      inDegreeMap.set(e.target, (inDegreeMap.get(e.target) || 0) + 1);
+      outAmountMap.set(e.source, (outAmountMap.get(e.source) || 0) + (Number(e.amount) || 0));
+    });
+
+    const sourceTotal = (displayTrace.nodes || [])
+      .filter((n) => (inDegreeMap.get(n.id) || 0) === 0)
+      .reduce((sum, n) => sum + (outAmountMap.get(n.id) || 0), 0);
+
+    return sourceTotal || displayTotal;
+  }, [displayTrace, displayTotal]);
+
   useEffect(() => {
     sounds.muted = !soundEnabled;
   }, [soundEnabled]);
@@ -1996,24 +2031,52 @@ export default function App() {
       }
     });
 
+    const emptyTraceObj = {
+      nodes: [],
+      edges: [],
+      paths: [],
+      candidates: [],
+      merchant_alerts: [],
+      excluded_p2m_count: 0,
+      transaction_count: 0,
+      notice: "All transactions have been reset to zero.",
+    };
+
     const unsubscribeSync = syncClient.subscribe((event, data) => {
       if (event === "SYNC_STATUS") {
         setSyncStatus({ connected: data.connected, devices: data.devices || 1 });
       } else if (event === "DEVICE_COUNT") {
         setSyncStatus((prev) => ({ ...prev, devices: data.connected_devices || 1 }));
+      } else if (event === "INIT_STATE" || event === "SAMPLE_LOADED") {
+        if (data.is_reset) {
+          setTransactions([]);
+          setTrace(emptyTraceObj);
+          setViewMode("all");
+          try {
+            localStorage.setItem(BRIDGE_KEY, JSON.stringify({ isReset: true, transactions: [], trace: emptyTraceObj }));
+          } catch {}
+          return;
+        }
+        if (Array.isArray(data.transactions)) {
+          setTransactions(data.transactions);
+          if (data.trace) setTrace(data.trace);
+          setViewMode("all");
+          try {
+            localStorage.setItem(BRIDGE_KEY, JSON.stringify({ isReset: false, transactions: data.transactions, trace: data.trace }));
+          } catch {}
+          if (event === "SAMPLE_LOADED") {
+            setIsAnalyzing(true);
+            setTimeout(() => setIsAnalyzing(false), 650);
+          }
+        }
       } else if (event === "TX_UPDATE") {
         if (data.is_reset) {
           setTransactions([]);
-          setTrace({
-            nodes: [],
-            edges: [],
-            paths: [],
-            candidates: [],
-            merchant_alerts: [],
-            excluded_p2m_count: 0,
-            transaction_count: 0,
-          });
+          setTrace(emptyTraceObj);
           setViewMode("all");
+          try {
+            localStorage.setItem(BRIDGE_KEY, JSON.stringify({ isReset: true, transactions: [], trace: emptyTraceObj }));
+          } catch {}
           return;
         }
 
@@ -2021,6 +2084,9 @@ export default function App() {
           setTransactions(data.transactions);
           if (data.trace) setTrace(data.trace);
           setViewMode("all");
+          try {
+            localStorage.setItem(BRIDGE_KEY, JSON.stringify({ isReset: false, transactions: data.transactions, trace: data.trace }));
+          } catch {}
 
           // Visual scanner effect when payment arrives
           setIsAnalyzing(true);
@@ -2040,27 +2106,13 @@ export default function App() {
         }
       } else if (event === "RESET") {
         setTransactions([]);
-        setTrace({
-          nodes: [],
-          edges: [],
-          paths: [],
-          candidates: [],
-          merchant_alerts: [],
-          excluded_p2m_count: 0,
-          transaction_count: 0,
-          notice: "All synthetic transactions and paths have been reset.",
-        });
+        setTrace(emptyTraceObj);
         setViewMode("all");
         setResetToast(true);
         setTimeout(() => setResetToast(false), 4500);
-      } else if (event === "SAMPLE_LOADED") {
-        if (Array.isArray(data.transactions)) {
-          setTransactions(data.transactions);
-          if (data.trace) setTrace(data.trace);
-          setViewMode("all");
-          setIsAnalyzing(true);
-          setTimeout(() => setIsAnalyzing(false), 650);
-        }
+        try {
+          localStorage.setItem(BRIDGE_KEY, JSON.stringify({ isReset: true, transactions: [], trace: emptyTraceObj }));
+        } catch {}
       }
     });
 
@@ -2525,7 +2577,7 @@ export default function App() {
                     {isAnalyzing ? (
                       <div className="kpi-skeleton-loader" />
                     ) : (
-                      <div className="kpi-value">{money(displayTotal)}</div>
+                      <div className="kpi-value">{money(trackedUniqueVolume)}</div>
                     )}
                     <div className="kpi-sub">
                       Across {displayTransactions.length} payments tracked
