@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   ArrowRight, BadgeAlert, Banknote, Check, CheckCircle2, ChevronRight,
   CircleHelp, Coins, Copy, Gift, GitBranch, Info, Lock, MapPin, Mic, QrCode, RefreshCw, RotateCcw,
