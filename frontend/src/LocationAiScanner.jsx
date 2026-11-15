@@ -26,6 +26,9 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { sounds } from "./soundEffects";
+import StudentIntakeHotspotPanel from "./StudentIntakeHotspotPanel";
+import BusinessAuditorModal from "./BusinessAuditorModal";
+import Section94NoticeModal from "./Section94NoticeModal";
 
 function money(val) {
   return new Intl.NumberFormat("en-IN", {
@@ -296,8 +299,14 @@ export const SCAN_ZONES = [
 export default function LocationAiScanner({
   onSelectMerchantForLaundering = null,
   onNavigateTab = null,
+  onOpenSection94Notice = null,
+  role = "analyst",
   lang = "en",
 }) {
+  const [scannerSubTab, setScannerSubTab] = useState("radar"); // "radar" | "hotspots" | "audit"
+  const [showSec94Modal, setShowSec94Modal] = useState(false);
+  const [sec94Target, setSec94Target] = useState(null);
+  const [showAuditorModal, setShowAuditorModal] = useState(false);
   const [selectedZoneId, setSelectedZoneId] = useState("zone-north-campus");
   const [filterMode, setFilterMode] = useState("all"); // all | spikesOnly | bakeriesOnly
   const [selectedMerchantId, setSelectedMerchantId] = useState(null);
@@ -424,6 +433,88 @@ NOTICE: PRACTICE TEST DEMO ONLY - SYNTHETIC DATA.`;
         </div>
         <span className="demo-mode-pill">PRACTICE DEMO · NOT REAL</span>
       </div>
+
+      {/* MODULE 1 & 3 FORENSIC SUBTABS */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "14px", flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={() => { sounds.playClick(); setScannerSubTab("radar"); }}
+          style={{
+            padding: "8px 14px",
+            borderRadius: "8px",
+            border: "1px solid",
+            borderColor: scannerSubTab === "radar" ? "#0284c7" : "#cbd5e1",
+            background: scannerSubTab === "radar" ? "#0284c7" : "#ffffff",
+            color: scannerSubTab === "radar" ? "#ffffff" : "#334155",
+            fontWeight: "700",
+            fontSize: "12px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <Radar size={15} />
+          <span>1. Sector Radar & Cash Spikes</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { sounds.playClick(); setScannerSubTab("hotspots"); }}
+          style={{
+            padding: "8px 14px",
+            borderRadius: "8px",
+            border: "1px solid",
+            borderColor: scannerSubTab === "hotspots" ? "#dc2626" : "#cbd5e1",
+            background: scannerSubTab === "hotspots" ? "#dc2626" : "#ffffff",
+            color: scannerSubTab === "hotspots" ? "#ffffff" : "#334155",
+            fontWeight: "700",
+            fontSize: "12px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <MapPin size={15} />
+          <span>2. GPS Hotspots & Cash Choke Points (Module 1 & 3)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { sounds.playClick(); setScannerSubTab("audit"); setShowAuditorModal(true); }}
+          style={{
+            padding: "8px 14px",
+            borderRadius: "8px",
+            border: "1px solid",
+            borderColor: scannerSubTab === "audit" ? "#4338ca" : "#cbd5e1",
+            background: scannerSubTab === "audit" ? "#4338ca" : "#ffffff",
+            color: scannerSubTab === "audit" ? "#ffffff" : "#334155",
+            fontWeight: "700",
+            fontSize: "12px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <Store size={15} />
+          <span>3. Stock vs. Deposit Auditor (Section 68J NDPS)</span>
+        </button>
+      </div>
+
+      {scannerSubTab === "hotspots" && (
+        <div style={{ marginBottom: "20px" }}>
+          <StudentIntakeHotspotPanel
+            role={role}
+            onOpenSection94Notice={(target) => {
+              setSec94Target(target);
+              setShowSec94Modal(true);
+            }}
+            onNavigateTab={onNavigateTab}
+          />
+        </div>
+      )}
 
       {/* 2. HEADER & SECTOR CONTROLS */}
       <div className="scanner-header-card">
@@ -779,6 +870,25 @@ NOTICE: PRACTICE TEST DEMO ONLY - SYNTHETIC DATA.`;
 
                 <button
                   className="btn-dossier-secondary"
+                  style={{ background: "#f0f9ff", border: "1px solid #bae6fd", color: "#0369a1", fontWeight: "700" }}
+                  onClick={() => {
+                    sounds.playClick();
+                    setSec94Target({
+                      targetEntity: activeMerchant ? `${activeMerchant.id.toLowerCase()}@upi` : "bakery.demo@upi",
+                      entityName: activeMerchant?.alias || "Suspect Shop",
+                      amount: activeMerchant?.increase || 12700,
+                      reason: `AI Location Radar Anomaly: ${activeMerchant?.jumpMultiple}x sudden cash jump (+${money(activeMerchant?.increase)}) without matching production invoices.`,
+                    });
+                    setShowSec94Modal(true);
+                  }}
+                  title="Generate Section 94 BNSS Legal Requisition Notice for this Shop"
+                >
+                  <FileText size={15} />
+                  <span>Generate Sec 94 BNSS Notice</span>
+                </button>
+
+                <button
+                  className="btn-dossier-secondary"
                   onClick={handleCopyBrief}
                   title="Copy AI Forensic Surveillance Brief to clipboard"
                 >
@@ -853,6 +963,31 @@ NOTICE: PRACTICE TEST DEMO ONLY - SYNTHETIC DATA.`;
           </div>
         </div>
       </div>
+      {/* SECTION 94 BNSS NOTICE MODAL */}
+      {showSec94Modal && (
+        <Section94NoticeModal
+          isOpen={showSec94Modal}
+          onClose={() => setShowSec94Modal(false)}
+          targetEntity={sec94Target?.targetEntity || "bakery.demo@upi"}
+          entityName={sec94Target?.entityName || "Suspect Shop"}
+          amount={sec94Target?.amount || 9500}
+          reason={sec94Target?.reason || "Suspected unbilled cash laundering & rapid digital mule conversion."}
+        />
+      )}
+
+      {/* FRONT-SHOP STOCK VS DEPOSIT AUDITOR MODAL */}
+      {showAuditorModal && (
+        <BusinessAuditorModal
+          isOpen={showAuditorModal}
+          onClose={() => { setShowAuditorModal(false); setScannerSubTab("radar"); }}
+          onOpenSection94Notice={(target) => {
+            setShowAuditorModal(false);
+            setSec94Target(target);
+            setShowSec94Modal(true);
+          }}
+          initialMerchant={activeMerchant?.id || "FORT-ROAD-BAKERY"}
+        />
+      )}
     </div>
   );
 }

@@ -31,6 +31,7 @@ const RECENT_CONTACTS = [
 const PRESETS = [
   { id: "candy", label: "🍬 Candy Shop (₹35)", desc: "Pre-fill: Student pays ₹35 at Bakery -> money forwarded to Fake Acc" },
   { id: "direct", label: "⚡ Split Transfer (₹700)", desc: "Pre-fill: Student transfer of ₹700 to Fake Acc 7A" },
+  { id: "cdmLoop", label: "🏧 CDM -> UPI Loop (₹9,500)", desc: "Structured ATM CDM cash deposit -> rapid UPI sweep to cashout hub within 22 min" },
   { id: "cashPool", label: "💵 Cash Stash (₹2,000)", desc: "Students give ₹250 cash -> Provider saves until ₹2,000 -> drops at Bakery -> Alt Acc -> Hub" },
   { id: "burst", label: "🌐 Send 7 Test Payments", desc: "Simulate 7 test payments through fake accounts to final hub" },
   { id: "cash", label: "🏪 Shop Cash Desk (₹900)", desc: "Open Shop Cash Counter desk" },
@@ -112,6 +113,8 @@ export default function PayDemo({
       setAmount("700");
       setNote("Money transfer");
       setShowPaySheet(true);
+    } else if (p.id === "cdmLoop") {
+      executeCdmLoop();
     } else if (p.id === "cashPool") {
       executeCashPool();
     } else if (p.id === "burst") {
@@ -261,6 +264,110 @@ export default function PayDemo({
     }
 
     setStatus("💵 Physical cash mechanism: Students ₹250+ handed over -> Provider saved ₹2,000 -> Deposited at Bakery counter -> Alt Acc -> Hub!");
+    setBusy(false);
+  }
+
+  async function executeCdmLoop() {
+    setBusy(true);
+    setStatus("");
+    sounds.playAlert();
+    if (typeof sounds.speakAnnouncement === "function") {
+      sounds.speakAnnouncement("Structured Cash Deposit Machine loop detected with rapid UPI drain", "en-IN");
+    }
+
+    const now = Date.now();
+    const cdmTxs = [
+      {
+        sender: "CDM-KIOSK-04",
+        receiver: "FAKE-ACC-7A",
+        amount: 9500,
+        channel: "cdm",
+        is_p2m: false,
+        reference_id: `CDM-DEP-${now}`,
+        timestamp: new Date(now - 22 * 60 * 1000).toISOString(),
+        event_type: "cdm_cash_deposit",
+      },
+      {
+        sender: "FAKE-ACC-7A",
+        receiver: "CASHOUT-HUB",
+        amount: 9400,
+        channel: "upi",
+        is_p2m: false,
+        reference_id: `UPI-SWEEP-${now + 1}`,
+        timestamp: new Date(now).toISOString(),
+        event_type: "rapid_upi_sweep",
+      },
+      {
+        sender: "STUDENT-014",
+        receiver: "PROVIDER-HARSH",
+        amount: 250,
+        channel: "physical-cash",
+        is_p2m: false,
+        reference_id: `CSH-STU-${now + 2}`,
+        timestamp: new Date(now - 45 * 60 * 1000).toISOString(),
+        event_type: "student_handover",
+      },
+      {
+        sender: "PROVIDER-HARSH",
+        receiver: "FORT-ROAD-BAKERY",
+        amount: 2000,
+        channel: "shop-counter-cash",
+        is_p2m: false,
+        reference_id: `CSH-BAK-${now + 3}`,
+        timestamp: new Date(now - 35 * 60 * 1000).toISOString(),
+        event_type: "counter_deposit",
+      },
+      {
+        sender: "FORT-ROAD-BAKERY",
+        receiver: "FAKE-ACC-7A",
+        amount: 2000,
+        channel: "merchant-settlement",
+        is_p2m: false,
+        reference_id: `STTL-${now + 4}`,
+        timestamp: new Date(now - 15 * 60 * 1000).toISOString(),
+        event_type: "online_settlement",
+      },
+    ];
+
+    const merchantObs = [
+      {
+        merchant_alias: "FORT-ROAD-BAKERY",
+        category: "Bakery & Sweets",
+        usual_daily_receipts: 200,
+        observed_daily_receipts: 2200,
+      },
+    ];
+
+    try {
+      await syncClient.sendTransactions(cdmTxs, "mobile-gpay-cdmloop");
+    } catch {}
+
+    if (typeof onAddTransactions === "function") {
+      await onAddTransactions(cdmTxs, merchantObs);
+    } else {
+      try {
+        const raw = localStorage.getItem(BRIDGE_KEY);
+        const stored = JSON.parse(raw ?? "{}");
+        const existing = Array.isArray(stored.transactions) ? stored.transactions : [];
+        const combined = [...cdmTxs, ...existing];
+        const res = await fetch(`${API}/api/trace-mule`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transactions: combined, merchant_observations: merchantObs }),
+        });
+        const trace = res.ok ? await res.json() : null;
+        localStorage.setItem(BRIDGE_KEY, JSON.stringify({
+          createdAt: new Date().toISOString(),
+          transactions: combined,
+          merchantObservations: merchantObs,
+          trace,
+          isReset: false,
+        }));
+        window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: { transactions: combined, trace } }));
+      } catch {}
+    }
+
+    setStatus("🏧 CDM Smurfing Loop: ₹9,500 deposited via CDM -> rapid UPI sweep ₹9,400 to Cashout Hub in 22 min (< ₹10k CTR limit)!");
     setBusy(false);
   }
 

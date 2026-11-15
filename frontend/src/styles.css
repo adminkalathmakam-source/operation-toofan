@@ -8970,3 +8970,135 @@ button, input, select {
   align-items: center;
   gap: 4px;
 }
+
+/* ==========================================================================
+   MODULE 1, 2 & 3: FORENSIC UPGRADE STYLES (BNSS 2023, BSA 2023, JJ ACT 2015)
+   ========================================================================== */
+
+/* Role Switcher Pill */
+.role-switcher-container {
+  display: inline-flex;
+  align-items: center;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  padding: 2px 3px;
+  gap: 2px;
+}
+
+.role-switch-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  padding: 3px 9px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.role-switch-btn.active.analyst {
+  background: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.4);
+}
+
+.role-switch-btn.active.counsellor {
+  background: #059669;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(5, 150, 105, 0.4);
+}
+
+.role-jj-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* CDM to UPI Smurfing Indicator */
+.cdm-loop-pulse-ring {
+  animation: cdmPulseRing 1.5s infinite;
+}
+
+@keyframes cdmPulseRing {
+  0% { r: 24; stroke-opacity: 0.8; stroke: #f97316; }
+  50% { r: 35; stroke-opacity: 0.3; stroke: #ea580c; }
+  100% { r: 24; stroke-opacity: 0.8; stroke: #f97316; }
+}
+
+.badge-cdm-smurfing {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fdba74;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+/* Section 94 BNSS Quick Action Buttons */
+.btn-sec94-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0284c7;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-sec94-trigger:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+/* Video Seizure Capture Badges */
+.video-preview-frame {
+  width: 100%;
+  max-height: 200px;
+  border-radius: 8px;
+  background: #000;
+  object-fit: cover;
+}
+
+.video-sha-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+.video-sha-badge code {
+  font-family: monospace;
+  font-size: 10px;
+  color: #047857;
+  background: #d1fae5;
+  padding: 1px 4px;
+  border-radius: 3px;
+}

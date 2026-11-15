@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity, AlertCircle, ArrowRight, BadgeAlert, Banknote, Camera, Check, CheckCircle2, ChevronRight,
-  Copy, Download, Eye, FileDown, FileSpreadsheet, Fingerprint, FlaskConical,
+  Activity, AlertCircle, ArrowRight, BadgeAlert, Banknote, Building2, Camera, Check, CheckCircle2, ChevronRight,
+  Copy, Download, Eye, FileDown, FileSpreadsheet, FileText, Fingerprint, FlaskConical,
   GitBranch, HeartHandshake, History, Landmark, Languages, Layers, Loader2, Lock, LogOut, MapPin, Menu, UserCheck,
-  Pause, Play, QrCode, Radio, RefreshCw, RotateCcw, Scan, Search, Shield, ShieldAlert, ShieldCheck,
-  Smartphone, Sparkles, Store, SwitchCamera, Trash2, Upload, Volume2, VolumeX, Wallet, X, Zap
+  Pause, Play, QrCode, Radio, RefreshCw, RotateCcw, Scale, Scan, Search, Shield, ShieldAlert, ShieldCheck,
+  Smartphone, Sparkles, Store, SwitchCamera, Trash2, Upload, Video, Volume2, VolumeX, Wallet, X, Zap
 } from "lucide-react";
 import { saveEvidence, getAllEvidence, deleteEvidence } from "./evidenceStore";
 import { sounds } from "./soundEffects";
@@ -13,6 +13,9 @@ import CashLaunderingDesk from "./CashLaunderingDesk.jsx";
 import LocationAiScanner from "./LocationAiScanner.jsx";
 import PoliceSignInModal from "./PoliceSignInModal.jsx";
 import PoliceGateScreen from "./PoliceGateScreen.jsx";
+import Section94NoticeModal from "./Section94NoticeModal.jsx";
+import BusinessAuditorModal from "./BusinessAuditorModal.jsx";
+import StudentIntakeHotspotPanel from "./StudentIntakeHotspotPanel.jsx";
 import { syncClient } from "./syncClient";
 import { translations, POLICE_DEFAULT_USER } from "./i18n.js";
 
@@ -137,6 +140,22 @@ const SCENARIOS = {
       observed_daily_receipts: 2200,
     }],
   },
+  cdmLoop: {
+    label: "🏧 CDM -> UPI Smurfing Loop",
+    records: [
+      { sender: "CDM-KIOSK-04", receiver: "FAKE-ACC-7A", amount: 9500, channel: "cdm", is_p2m: false, reference_id: "CDM/DEP/948102", timestamp: "2026-11-15T10:14:00Z", event_type: "cdm_cash_deposit" },
+      { sender: "FAKE-ACC-7A", receiver: "CASHOUT-HUB", amount: 9400, channel: "upi", is_p2m: false, reference_id: "UPI/SWEEP/841029", timestamp: "2026-11-15T10:36:00Z", event_type: "rapid_upi_sweep" },
+      { sender: "STUDENT-014", receiver: "PROVIDER-HARSH", amount: 250, channel: "physical-cash", is_p2m: false, reference_id: "CSH-STU-01", event_type: "student_handover" },
+      { sender: "PROVIDER-HARSH", receiver: "FORT-ROAD-BAKERY", amount: 2000, channel: "shop-counter-cash", is_p2m: false, reference_id: "CSH-BAK-02", event_type: "counter_deposit" },
+      { sender: "FORT-ROAD-BAKERY", receiver: "FAKE-ACC-7A", amount: 2000, channel: "merchant-settlement", is_p2m: false, reference_id: "STTL-03", event_type: "online_settlement" },
+    ],
+    merchant: [{
+      merchant_alias: "FORT-ROAD-BAKERY",
+      category: "Bakery & Sweets",
+      usual_daily_receipts: 200,
+      observed_daily_receipts: 2200,
+    }],
+  },
 };
 
 const VIEW_MODES = {
@@ -155,6 +174,11 @@ const VIEW_MODES = {
     desc: "Student QR payments routed through shop to fake acc",
     badge: "MERCHANT HOPS",
   },
+  cdmLoop: {
+    label: "🏧 CDM -> UPI Smurfing Loop",
+    desc: "Structured Cash Deposit (< ₹10k) swept to Cashout Hub in 22 min",
+    badge: "SMURFING LOOP",
+  },
   cashDeposit: {
     label: "💵 Suspicious Cash Spikes",
     desc: "High-value cash jumps and abnormal shop deposits",
@@ -168,6 +192,11 @@ const VIEW_MODES = {
 };
 
 const SIMULATION_SCRIPTS = {
+  cdmLoop: [
+    { edgeId: "CDM-KIOSK-04->FAKE-ACC-7A", narration: "Step 1 of 3: Suspicious structured cash deposit of ₹9,500 injected at CDM Kiosk 04 (under ₹10k CTR limit).", sound: "alert" },
+    { edgeId: "FAKE-ACC-7A->CASHOUT-HUB", narration: "Step 2 of 3: Rapid Smurfing Sweep! 22 minutes later, ₹9,400 drained via UPI to Final Cashout Hub.", sound: "alert" },
+    { edgeId: "FORT-ROAD-BAKERY->FAKE-ACC-7A", narration: "Step 3 of 3: Commingled bakery counter cash also channeled into Fake Acc 7A mule.", sound: "success" },
+  ],
   candy: [
     { edgeId: "STUDENT-014->BAKERY-QR-02", narration: "Step 1 of 4: Student-014 buys snacks at the bakery using UPI for ₹35.", sound: "click" },
     { edgeId: "BAKERY-QR-02->FAKE-ACC-7A", narration: "Step 2 of 4: Bakery sends ₹3,400 to Fake Acc 7A (pretending it is shop settlement).", sound: "alert" },
@@ -351,6 +380,17 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
         icon: "🎒",
       };
     }
+    const isCdm = node.id.includes("CDM") || node.role === "cdm";
+    if (isCdm) {
+      return {
+        fill: "url(#cdmGrad)",
+        stroke: "#ea580c",
+        glow: "url(#glowOrange)",
+        textFill: "#c2410c",
+        badgeBg: "#ffedd5",
+        icon: "🏧",
+      };
+    }
     const isDestination = node.role === "destination" || node.outgoing === 0 || node.id.includes("HUB") || node.id.includes("CASHOUT");
     if (isDestination) {
       return {
@@ -373,15 +413,15 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
         icon: "🏪",
       };
     }
-    const isFakeAcc = node.role === "possible-convergence" || node.incoming >= 2 || node.id.includes("FAKE-ACC") || node.id.includes("MULE") || node.id.includes("ALT-ACC");
+    const isFakeAcc = node.role === "possible-convergence" || node.incoming >= 2 || node.id.includes("FAKE-ACC") || node.id.includes("MULE") || node.id.includes("ALT-ACC") || node.is_cdm_loop;
     if (isFakeAcc) {
       return {
-        fill: "url(#fakeAccGrad)",
-        stroke: "#ef4444",
-        glow: "url(#glowRed)",
-        textFill: "#dc2626",
-        badgeBg: "#fee2e2",
-        icon: "⚠️",
+        fill: node.is_cdm_loop ? "url(#cdmLoopGrad)" : "url(#fakeAccGrad)",
+        stroke: node.is_cdm_loop ? "#ea580c" : "#ef4444",
+        glow: node.is_cdm_loop ? "url(#glowOrange)" : "url(#glowRed)",
+        textFill: node.is_cdm_loop ? "#9a3412" : "#dc2626",
+        badgeBg: node.is_cdm_loop ? "#ffedd5" : "#fee2e2",
+        icon: node.is_cdm_loop ? "🏧⚠️" : "⚠️",
       };
     }
     return {
@@ -523,8 +563,19 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
               <stop offset="0%" stopColor="#fef3c7" />
               <stop offset="100%" stopColor="#fde68a" />
             </linearGradient>
+            <linearGradient id="cdmGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fff7ed" />
+              <stop offset="100%" stopColor="#fed7aa" />
+            </linearGradient>
+            <linearGradient id="cdmLoopGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffedd5" />
+              <stop offset="100%" stopColor="#fed7aa" />
+            </linearGradient>
             <filter id="glowAmber" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#f59e0b" floodOpacity="0.55" />
+            </filter>
+            <filter id="glowOrange" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor="#f97316" floodOpacity="0.65" />
             </filter>
 
             {/* Subtle Tier Column Glass Tints */}
@@ -735,6 +786,20 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
                   </>
                 )}
 
+                {/* Glowing alert radar pulse rings for CDM Smurfing Loop */}
+                {node.is_cdm_loop && (
+                  <circle
+                    cx={pos.x}
+                    cy={pos.y}
+                    r="34"
+                    fill="none"
+                    stroke="#ea580c"
+                    strokeWidth="2.5"
+                    strokeDasharray="4 3"
+                    className="cdm-pulse-ring"
+                  />
+                )}
+
                 {/* Main Circle with 3D drop shadow */}
                 <circle
                   cx={pos.x}
@@ -827,6 +892,7 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
           <span className="legend-chip"><span className="chip-dot blue" /> Normal Senders</span>
           <span className="legend-chip"><span className="chip-dot yellow" /> Shops & QR Codes</span>
           <span className="legend-chip"><span className="chip-dot red" /> Fake Account (Mule)</span>
+          <span className="legend-chip" style={{ background: "#ffedd5", borderColor: "#fed7aa", color: "#9a3412" }}><span className="chip-dot amber" style={{ background: "#ea580c" }} /> 🏧 CDM Loop Mule</span>
           <span className="legend-chip"><span className="chip-dot purple" /> Final Cashout Hub</span>
           <span className="legend-chip"><span className="chip-dot emerald" /> Moving Money</span>
         </div>
@@ -844,15 +910,27 @@ function OfficialEvidenceWizard() {
   const [digest, setDigest] = useState("");
   const [isHashing, setIsHashing] = useState(false);
   const [capturedAt, setCapturedAt] = useState("");
+  
+  // Section 105 BNSS Mandatory Video Capture
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoDigest, setVideoDigest] = useState("");
+  const [isVideoHashing, setIsVideoHashing] = useState(false);
+  const [videoCapturedAt, setVideoCapturedAt] = useState("");
+
   const [coordinates, setCoordinates] = useState(null);
   const [officer, setOfficer] = useState("OFFICER-DEMO-01");
+  const [officerDesignation, setOfficerDesignation] = useState("Inspector / Excise Circle Officer");
+  const [deviceModel, setDeviceModel] = useState("Apple iPhone 14 / Police Digital Ev Cam");
   const [caseLabel, setCaseLabel] = useState("CR-2026-TOOFAN-01");
+  
+  // BNSS 2023, BSA 2023 & NDPS Statutory Checklist
   const [checklist, setChecklist] = useState({
-    identityNoted: true,
-    groundsCommunicated: true,
-    independentWitness: false,
-    personInformed: false,
-    searchRecordCompleted: false,
+    sec42_written_grounds: true,
+    sec42_dispatch_72h: true,
+    sec50_magistrate_option: true,
+    sec52a_magistrate_inventory: true,
+    sec105_bnss_videography: true,
+    sec100_bnss_witness: true,
   });
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -980,6 +1058,25 @@ function OfficialEvidenceWizard() {
     setTimeout(() => setIsHashing(false), 700);
   }
 
+  async function hashVideoBlob(blob, name) {
+    if (!globalThis.crypto?.subtle) {
+      throw new Error("Web Crypto unavailable. Please use modern browser.");
+    }
+    setIsVideoHashing(true);
+    const bytes = await blob.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
+    const hex = Array.from(new Uint8Array(hashBuffer), (byte) =>
+      byte.toString(16).padStart(2, "0")
+    ).join("");
+
+    setVideoFile(name);
+    setVideoDigest(hex);
+    setVideoCapturedAt(new Date().toISOString());
+    sounds.playClick();
+    setNotice("Section 105 BNSS Seizure Video SHA-256 digest computed successfully.");
+    setTimeout(() => setIsVideoHashing(false), 700);
+  }
+
   async function handleFileChoose(e) {
     const selected = e.target.files?.[0];
     if (!selected) return;
@@ -989,6 +1086,24 @@ function OfficialEvidenceWizard() {
     } catch (err) {
       setNotice(err.message);
     }
+  }
+
+  async function handleVideoChoose(e) {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    try {
+      await hashVideoBlob(selected, selected.name);
+    } catch (err) {
+      setNotice(err.message);
+    }
+  }
+
+  async function generateSyntheticVideo() {
+    // Generate practice binary block representing 30s body-cam MP4 recording
+    const fakeVideoBuffer = new Uint8Array(2048);
+    crypto.getRandomValues(fakeVideoBuffer);
+    const blob = new Blob([fakeVideoBuffer], { type: "video/mp4" });
+    await hashVideoBlob(blob, `sec105-bnss-search-${Date.now()}.mp4`);
   }
 
   async function generateSyntheticPlaceholder() {
@@ -1031,27 +1146,31 @@ function OfficialEvidenceWizard() {
   }
 
   const checklistScore = Object.values(checklist).filter(Boolean).length;
-  const checklistPercent = Math.round((checklistScore / 5) * 100);
+  const checklistPercent = Math.round((checklistScore / 6) * 100);
 
   async function handleSaveAndExport() {
     if (!digest) {
-      setNotice("Please select or generate an evidence specimen first.");
+      setNotice("Please select or generate a photo evidence specimen first.");
       return;
     }
     if (checklistPercent < 100) {
-      setNotice("Please confirm all 5 procedural checklist items before generating PDF.");
+      setNotice("Please confirm all 6 statutory checklist items (NDPS + BNSS) before generating PDF.");
       return;
     }
 
     setBusy(true);
-    setNotice("Generating tamper-evident remand summary...");
+    setNotice("Generating court-ready Remand Memo & Section 63 BSA 2023 Certificate...");
     const newEntry = {
       id: crypto.randomUUID(),
       file,
       sha256: digest,
+      video_filename: videoFile,
+      video_sha256: videoDigest,
       captured_at: capturedAt,
       coordinates,
       officer_id: officer,
+      officer_designation: officerDesignation,
+      device_make_model: deviceModel,
       case_label: caseLabel,
       checklist,
       saved_at: new Date().toISOString(),
@@ -1071,6 +1190,10 @@ function OfficialEvidenceWizard() {
             captured_at: capturedAt,
             coordinates,
             officer_id: officer,
+            officer_designation: officerDesignation,
+            device_make_model: deviceModel,
+            video_sha256: videoDigest || null,
+            video_filename: videoFile || null,
             checklist,
           },
         }),
@@ -1082,11 +1205,11 @@ function OfficialEvidenceWizard() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `TOOFAN-Evidence-${caseLabel}.pdf`;
+      a.download = `Remand-Memo-BSA63-${caseLabel}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       sounds.playCashRegister();
-      setNotice("Evidence record saved to IndexedDB vault and PDF memo downloaded!");
+      setNotice("Court-ready Remand Memo with Sec 63 BSA 2023 Electronic Evidence Certificate downloaded!");
     } catch (err) {
       setNotice(`Saved locally, but backend PDF offline: ${err.message}.`);
     } finally {
@@ -1148,6 +1271,25 @@ function OfficialEvidenceWizard() {
                   value={officer}
                   onChange={(e) => setOfficer(e.target.value)}
                   placeholder="e.g. OFFICER-RAVI-SHARMA"
+                />
+              </div>
+            </div>
+
+            <div className="clean-fields-pair" style={{ marginTop: "8px" }}>
+              <div className="input-field-group">
+                <label>Officer Designation</label>
+                <input
+                  value={officerDesignation}
+                  onChange={(e) => setOfficerDesignation(e.target.value)}
+                  placeholder="e.g. Inspector / Excise Circle Officer"
+                />
+              </div>
+              <div className="input-field-group">
+                <label>Evidence Capture Device (Make / Model)</label>
+                <input
+                  value={deviceModel}
+                  onChange={(e) => setDeviceModel(e.target.value)}
+                  placeholder="e.g. Apple iPhone 14 / Police Sec-105 Unit"
                 />
               </div>
             </div>
@@ -1235,6 +1377,60 @@ function OfficialEvidenceWizard() {
               )}
             </div>
 
+            {/* MANDATORY SECTION 105 BNSS SEIZURE VIDEOGRAPHY */}
+            <div className="video-evidence-strip" style={{ marginTop: "14px", padding: "12px", background: "rgba(15, 23, 42, 0.03)", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Video size={16} className="text-blue-600" />
+                  <b style={{ fontSize: "13px" }}>Section 105 BNSS Mandated Seizure Video</b>
+                </div>
+                <span className="demo-rule-badge" style={{ fontSize: "10px", background: "#dbeafe", color: "#1e40af", borderColor: "#bfdbfe" }}>
+                  MANDATORY VIDEOGRAPHY
+                </span>
+              </div>
+              <p style={{ margin: "0 0 10px 0", fontSize: "12px", color: "#64748b" }}>
+                Section 105 BNSS, 2023 mandates uninterrupted audio-video recording of search, seizure, and inventory preparation.
+              </p>
+
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                <label className="btn-specimen-primary" style={{ padding: "6px 12px", fontSize: "12px" }}>
+                  <Video size={13} />
+                  <span>{videoFile ? "Change Video File" : "Upload Seizure Video"}</span>
+                  <input type="file" accept="video/*" onChange={handleVideoChoose} hidden />
+                </label>
+                <button
+                  type="button"
+                  className="btn-specimen-outline"
+                  style={{ padding: "6px 12px", fontSize: "12px" }}
+                  onClick={generateSyntheticVideo}
+                >
+                  <Sparkles size={13} />
+                  <span>Generate Practice Video (Sec 105)</span>
+                </button>
+              </div>
+
+              {videoDigest && (
+                <div className="digest-display-strip" style={{ marginTop: "8px", background: "#f0fdf4", borderColor: "#bbf7d0" }}>
+                  <CheckCircle2 size={16} className="text-emerald" />
+                  <div className="digest-copy">
+                    <span className="digest-label" style={{ color: "#166534" }}>VIDEO SHA-256 (SEC 105 BNSS):</span>
+                    <code style={{ color: "#15803d" }}>{videoDigest}</code>
+                  </div>
+                  <button
+                    className="btn-copy-digest"
+                    onClick={() => {
+                      navigator.clipboard.writeText(videoDigest);
+                      sounds.playClick();
+                      setNotice("Video SHA-256 copied to clipboard!");
+                    }}
+                    title="Copy Video Hash"
+                  >
+                    <Copy size={13} />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="telemetry-bar-row">
               <div className="telemetry-col">
                 <small>TIMESTAMP</small>
@@ -1262,14 +1458,14 @@ function OfficialEvidenceWizard() {
             <div className="panel-step-header">
               <span className="step-num-pill">STEP 02</span>
               <div>
-                <h4>Legal Rules & Officer Sign-off</h4>
-                <p>Check off all basic legal steps before downloading the court report</p>
+                <h4>BNSS 2023 & NDPS Statutory Checklist</h4>
+                <p>Complete mandatory statutory requirements under NDPS, BNSS 2023, and BSA 2023</p>
               </div>
             </div>
 
             <div className="compliance-meter-box">
               <div className="meter-labels">
-                <span>Checklist Progress</span>
+                <span>Statutory Compliance Score</span>
                 <b>{checklistPercent}% COMPLETE</b>
               </div>
               <div className="meter-track">
@@ -1285,11 +1481,12 @@ function OfficialEvidenceWizard() {
 
             <div className="checklist-stack">
               {[
-                ["identityNoted", "Suspect identity and details written down in official diary"],
-                ["groundsCommunicated", "Clear written reason given for the search / inspection"],
-                ["independentWitness", "Independent local witness was present during check"],
-                ["personInformed", "Person was clearly informed of their legal rights"],
-                ["searchRecordCompleted", "List of seized items / phones recorded and signed"],
+                ["sec42_written_grounds", "Section 42 NDPS: Written grounds of belief recorded prior to entry & search"],
+                ["sec42_dispatch_72h", "Section 42(2) NDPS: Grounds dispatched to official superior within 72 hours"],
+                ["sec50_magistrate_option", "Section 50 NDPS: Written notice informing right to search before Gazetted Officer / Magistrate"],
+                ["sec52a_magistrate_inventory", "Section 52A NDPS: Seizure inventory prepared for Magistrate certification & chemical sampling"],
+                ["sec105_bnss_videography", "Section 105 BNSS, 2023: Audio-video recording of search & seizure cryptographically hashed"],
+                ["sec100_bnss_witness", "Section 100 BNSS: Search conducted in presence of two independent local witnesses with signed panchnama"],
               ].map(([key, title]) => (
                 <label key={key} className={`checklist-row ${checklist[key] ? "checked" : ""}`}>
                   <input
@@ -1308,13 +1505,24 @@ function OfficialEvidenceWizard() {
               ))}
             </div>
 
+            {/* SECTION 63 BSA 2023 STATUTORY CERTIFICATE CARD */}
+            <div style={{ marginTop: "12px", marginBottom: "12px", padding: "10px 12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "11px", color: "#334155", lineHeight: "1.5" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "700", color: "#0f172a", marginBottom: "4px" }}>
+                <Scale size={14} className="text-blue-700" />
+                <span>Section 63 Bharatiya Sakshya Adhiniyam (BSA), 2023 Certificate</span>
+              </div>
+              <span>
+                Replaces repealed Section 65B of Indian Evidence Act. The auto-generated Remand Memo embeds an immutable electronic evidence certificate with device metadata, officer declaration, and SHA-256 hashes.
+              </span>
+            </div>
+
             <button
               className={`btn-export-pdf-official ${busy ? "is-exporting" : ""}`}
               onClick={handleSaveAndExport}
               disabled={busy}
             >
               {busy ? <Loader2 size={17} className="spin-fast" /> : <FileDown size={17} />}
-              <span>{busy ? "Compiling Report & Cryptographic Signatures..." : "Save to Vault & Download PDF Report"}</span>
+              <span>{busy ? "Compiling Sec 63 BSA 2023 Certificate & PDF..." : "Generate Court-Ready Remand Memo (BSA 2023)"}</span>
               {!busy && <ChevronRight size={16} />}
             </button>
 
@@ -1479,7 +1687,7 @@ function OfficialEvidenceWizard() {
 // ----------------------------------------------------
 // SIMPLIFIED TRANSACTION FORENSICS LEDGER
 // ----------------------------------------------------
-function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo, onOpenGPay }) {
+function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo, onOpenGPay, onOpenSec94 }) {
   const [filterQuery, setFilterQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState("all");
 
@@ -1578,12 +1786,13 @@ function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo,
               <th>AMOUNT</th>
               <th>TYPE</th>
               <th>TXN ID</th>
+              <th>STATUTORY ACTION</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="empty-table-cell">
+                <td colSpan={7} className="empty-table-cell">
                   <div className="empty-ledger-box">
                     <div className="empty-ledger-icon">
                       <Landmark size={24} />
@@ -1632,6 +1841,40 @@ function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo,
                   <td>
                     <code className="ref-code">{tx.reference_id || `REF-${idx + 1}`}</code>
                   </td>
+                  <td>
+                    <button
+                      className="btn-sec94-inline"
+                      onClick={() => {
+                        sounds.playClick();
+                        if (onOpenSec94) {
+                          onOpenSec94({
+                            targetId: tx.receiver,
+                            targetType: tx.receiver.includes("BAKERY") || tx.receiver.includes("SHOP") ? "shop_qr" : "upi_vpa",
+                            transactionRef: tx.reference_id,
+                            amount: tx.amount,
+                          });
+                        }
+                      }}
+                      title="Generate statutory Section 94 BNSS Police Requisition for this account"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "4px 8px",
+                        fontSize: "11px",
+                        fontWeight: "600",
+                        background: "#eff6ff",
+                        color: "#1d4ed8",
+                        border: "1px solid #bfdbfe",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap"
+                      }}
+                    >
+                      <FileText size={11} />
+                      <span>Sec 94 Notice</span>
+                    </button>
+                  </td>
                 </tr>
               );
             })
@@ -1647,7 +1890,27 @@ function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo,
 // MAIN OFFICIAL APP COMPONENT
 // ----------------------------------------------------
 export default function App() {
-  const [privacy, setPrivacy] = useState(true);
+  // Role-Based Privacy under Section 74 Juvenile Justice Act, 2015
+  // "analyst" = DANSAF / Excise Analyst (Minors pseudonymised to STU-TOKEN-XXXX)
+  // "counsellor" = CWC / Vimukthi Counsellor (Decrypted for rehabilitation routing)
+  const [appRole, setAppRole] = useState("analyst");
+  const privacy = appRole === "analyst";
+
+  // Section 94 BNSS Bank Notice & Front-Shop Stock Auditor Modals
+  const [showSec94Modal, setShowSec94Modal] = useState(false);
+  const [sec94Target, setSec94Target] = useState(null);
+  const [showAuditorModal, setShowAuditorModal] = useState(false);
+
+  function handleOpenSec94(target) {
+    sounds.playClick();
+    setSec94Target(target || { targetId: "FAKE-ACC-7A", targetType: "upi_vpa", amount: 5600 });
+    setShowSec94Modal(true);
+  }
+
+  function handleOpenAuditor() {
+    sounds.playClick();
+    setShowAuditorModal(true);
+  }
 
   const [transactions, setTransactions] = useState(() => {
     try {
@@ -1924,6 +2187,9 @@ export default function App() {
     if (viewMode === "candy") {
       return transactions.filter((t) => t.is_p2m || t.channel?.includes("settle") || t.sender.includes("BAKERY") || t.receiver.includes("BAKERY") || t.sender.includes("MERCHANT") || t.receiver.includes("MERCHANT"));
     }
+    if (viewMode === "cdmLoop") {
+      return transactions.filter((t) => t.channel === "cdm" || t.sender.includes("CDM") || t.receiver.includes("CDM") || t.reference_id?.includes("CDM") || t.reference_id?.includes("SWEEP") || t.receiver === "FAKE-ACC-7A" || t.sender === "FAKE-ACC-7A");
+    }
     if (viewMode === "cashDeposit" || viewMode === "cashLaundering") {
       return transactions.filter((t) => t.channel?.includes("cash") || t.amount >= 1500 || t.channel?.includes("settle") || t.sender.includes("PROVIDER") || t.receiver.includes("PROVIDER"));
     }
@@ -1960,6 +2226,11 @@ export default function App() {
       activeEdges.forEach((e) => { nodeIds.add(e.source); nodeIds.add(e.target); });
       activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
       activePaths = (trace.paths || []).filter((p) => p.some((id) => id.includes("BAKERY") || id.includes("MERCHANT")));
+    } else if (viewMode === "cdmLoop") {
+      activeEdges = (trace.edges || []).filter((e) => e.channel === "cdm" || e.source.includes("CDM") || e.target.includes("CDM") || e.source === "FAKE-ACC-7A" || e.target === "FAKE-ACC-7A" || e.target === "CASHOUT-HUB");
+      const nodeIds = new Set();
+      activeEdges.forEach((e) => { nodeIds.add(e.source); nodeIds.add(e.target); });
+      activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
     } else if (viewMode === "cashDeposit" || viewMode === "cashLaundering") {
       activeEdges = (trace.edges || []).filter((e) => (e.amount || 0) >= 1500 || e.channel?.includes("cash") || e.source.includes("PROVIDER") || e.target.includes("PROVIDER") || e.source.includes("FORT-ROAD") || e.target.includes("FORT-ROAD"));
       const nodeIds = new Set();
@@ -2485,22 +2756,54 @@ export default function App() {
                 <span className="topbar-btn-text">Load Practice Data</span>
               </button>
 
-              {/* STUDENT PRIVACY TOGGLE */}
-              <div className="privacy-mode-pill">
-                <ShieldCheck size={16} className={privacy ? "text-emerald" : "text-muted"} />
-                <div className="privacy-pill-text">
-                  <b>Student Privacy</b>
-                  <small>{privacy ? "Protected" : "Real names"}</small>
+              {/* SECTION 74 JJ ACT ROLE SWITCHER */}
+              <div className="role-switcher-container" title="Section 74 Juvenile Justice Act, 2015 Compliance: Mask minor identity in analyst mode">
+                <div className="role-switcher-pill">
+                  <button
+                    type="button"
+                    className={`role-btn ${appRole === "analyst" ? "active" : ""}`}
+                    onClick={() => { sounds.playClick(); setAppRole("analyst"); }}
+                    title="DANSAF / Excise Analyst: Minor real names, phone numbers, and schools are strictly pseudonymised to STU-TOKEN-XXXX"
+                  >
+                    <Shield size={13} />
+                    <span>DANSAF Analyst</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`role-btn ${appRole === "counsellor" ? "active counsellor" : ""}`}
+                    onClick={() => { sounds.playClick(); setAppRole("counsellor"); }}
+                    title="CWC / Vimukthi Counsellor: Minor names unmasked for rehabilitation routing & de-addiction counselling"
+                  >
+                    <HeartHandshake size={13} />
+                    <span>CWC Counsellor</span>
+                  </button>
                 </div>
-                <button
-                  className={`privacy-toggle-btn ${privacy ? "active" : ""}`}
-                  onClick={() => { sounds.playClick(); setPrivacy(!privacy); }}
-                  role="switch"
-                  aria-checked={privacy}
-                >
-                  <span className="toggle-slider-circle" />
-                </button>
+                <span className={`jj-act-badge ${appRole === "analyst" ? "masked" : "unmasked"}`}>
+                  {appRole === "analyst" ? "⚖️ Sec 74 JJ Act (Masked)" : "🔓 CWC De-Addiction Access"}
+                </span>
               </div>
+
+              {/* QUICK SECTION 94 BNSS REQUISITION GENERATOR BUTTON */}
+              <button
+                className="btn-open-scanner-top desktop-only-btn"
+                onClick={() => handleOpenSec94({ targetId: "FAKE-ACC-7A", targetType: "upi_vpa", amount: 5600 })}
+                title="Generate formal Police Requisition Notice to Bank Nodal Officer under Section 94 BNSS, 2023"
+                style={{ background: "#eff6ff", color: "#1d4ed8", borderColor: "#bfdbfe" }}
+              >
+                <FileText size={14} />
+                <span className="topbar-btn-text">Sec 94 BNSS Notice</span>
+              </button>
+
+              {/* QUICK FRONT-SHOP STOCK AUDITOR BUTTON (NDPS 68J) */}
+              <button
+                className="btn-open-scanner-top desktop-only-btn"
+                onClick={handleOpenAuditor}
+                title="Audit Suspect Shop Wholesale Purchases vs Bank Deposits (Section 68J NDPS Act Reverse Burden)"
+                style={{ background: "#fef3c7", color: "#92400e", borderColor: "#fde68a" }}
+              >
+                <Building2 size={14} />
+                <span className="topbar-btn-text">Stock Auditor (68J)</span>
+              </button>
 
               {/* QUICK AI LOCATION SCANNER SHORTCUT BUTTON */}
               <button
@@ -2572,12 +2875,20 @@ export default function App() {
               </div>
             )}
 
-            {privacy && (
+            {privacy ? (
               <div className="rehab-banner-notice">
+                <ShieldCheck size={17} />
+                <div>
+                  <b>Section 74 Juvenile Justice Act, 2015 Active (DANSAF Analyst Mode).</b>
+                  <span> Student minor identities are cryptographically masked to <code>STU-TOKEN-XXXX</code> to prevent public disclosure. Switch role to CWC Counsellor to inspect rehabilitation status.</span>
+                </div>
+              </div>
+            ) : (
+              <div className="rehab-banner-notice" style={{ background: "#ecfdf5", borderColor: "#a7f3d0", color: "#065f46" }}>
                 <HeartHandshake size={17} />
                 <div>
-                  <b>Student Privacy Protection Active.</b>
-                  <span> Student names are hidden so young people stay protected.</span>
+                  <b>CWC / Vimukthi De-Addiction Counsellor Mode Active.</b>
+                  <span> Minor identities and guardian contact details are unmasked strictly for juvenile rehabilitation routing under Section 74 JJ Act.</span>
                 </div>
               </div>
             )}
@@ -2768,6 +3079,8 @@ export default function App() {
                         <span className="role-tag-badge">
                           {selectedNode.id.includes("PROVIDER") || selectedNode.id.includes("HANDLER")
                             ? "PROVIDER (CASH AGGREGATOR)"
+                            : selectedNode.is_cdm_loop || selectedNode.id.includes("CDM")
+                            ? "CDM SMURFING LOOP (RAPID DRAIN)"
                             : selectedNode.id.includes("FAKE-ACC") || selectedNode.id.includes("MULE") || selectedNode.role === "possible-convergence"
                             ? "FAKE ACC (MULE)"
                             : selectedNode.id.includes("CASHOUT") || selectedNode.id.includes("HUB") || selectedNode.role === "destination"
@@ -2783,6 +3096,14 @@ export default function App() {
                     </div>
 
                     <div className="dossier-stats-grid">
+                      {selectedNode.is_cdm_loop && (
+                        <div className="dossier-stat-item" style={{ gridColumn: "1 / -1", background: "#fff7ed", padding: "8px 12px", borderRadius: "6px", border: "1px solid #fed7aa" }}>
+                          <span style={{ color: "#c2410c", fontWeight: "700" }}>🏧 CDM SMURFING LOOP DETECTED:</span>
+                          <span style={{ fontSize: "12px", color: "#9a3412", display: "block", marginTop: "3px" }}>
+                            Cash deposited via ATM Cash Deposit Machine (CDM) was swept via UPI to Cashout Hub within 60 minutes. Structured below CTR reporting limits.
+                          </span>
+                        </div>
+                      )}
                       <div className="dossier-stat-item">
                         <span>{t.dossierReceived || "Money Received (In):"}</span>
                         <b className="text-emerald-700">
@@ -2802,6 +3123,8 @@ export default function App() {
                         <b>
                           {selectedNode.id.includes("PROVIDER") || selectedNode.id.includes("HANDLER")
                             ? "🎒 Provider / Cash Aggregator: Receives physical cash handovers from students, pools cash until ₹2,000 threshold, then drops at shop counter"
+                            : selectedNode.is_cdm_loop
+                            ? "🏧 Mule Smurfing Account: Used for rapid CDM cash deposit and rapid outbound UPI drainage"
                             : selectedNode.incoming >= 2 || selectedNode.id.includes("FAKE-ACC") || selectedNode.id.includes("MULE")
                             ? (t.dossierHighRisk || "⚠️ High Risk: Fake Account secretly collecting money from multiple people (Mule)")
                             : selectedNode.outgoing === 0 || selectedNode.id.includes("CASHOUT") || selectedNode.id.includes("HUB")
@@ -2809,6 +3132,55 @@ export default function App() {
                             : (t.dossierNormal || "👤 Normal Account: Ordinary sender or shop")}
                         </b>
                       </div>
+                    </div>
+
+                    <div className="dossier-actions-row" style={{ marginTop: "14px", display: "flex", gap: "8px", flexWrap: "wrap", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
+                      <button
+                        className="btn-sec94-launch"
+                        onClick={() => handleOpenSec94({
+                          targetId: selectedNode.id,
+                          targetType: selectedNode.id.includes("BAKERY") ? "shop_qr" : selectedNode.id.includes("CDM") ? "cdm_terminal" : "upi_vpa",
+                          amount: selectedNode.total_received || 5000,
+                        })}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "8px 14px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          background: "#1e40af",
+                          color: "#ffffff",
+                          border: "none",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <FileText size={14} />
+                        <span>Generate Section 94 BNSS Notice</span>
+                      </button>
+                      {(selectedNode.id.includes("BAKERY") || selectedNode.id.includes("SHOP") || selectedNode.id.includes("MERCHANT")) && (
+                        <button
+                          className="btn-audit-launch"
+                          onClick={() => handleOpenAuditor()}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "8px 14px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            background: "#fef3c7",
+                            color: "#92400e",
+                            border: "1px solid #fde68a",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <Building2 size={14} />
+                          <span>Audit Suspect Shop (NDPS 68J)</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2979,12 +3351,28 @@ export default function App() {
                     sounds.playClick();
                     setActiveTab("gpay");
                   }}
+                  onOpenSec94={handleOpenSec94}
                 />
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* SECTION 94 BNSS BANK PRODUCTION ORDER REQUISITION MODAL */}
+      <Section94NoticeModal
+        isOpen={showSec94Modal}
+        onClose={() => setShowSec94Modal(false)}
+        initialData={sec94Target}
+        policeUser={policeUser}
+      />
+
+      {/* FRONT-SHOP COMMINGLED FUND AUDITOR MODAL (NDPS 68J) */}
+      <BusinessAuditorModal
+        isOpen={showAuditorModal}
+        onClose={() => setShowAuditorModal(false)}
+        onOpenSec94={handleOpenSec94}
+      />
 
       {/* KERALA POLICE AUTHENTICATION MODAL */}
       <PoliceSignInModal
