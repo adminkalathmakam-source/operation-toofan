@@ -1936,6 +1936,28 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState("overview"); // overview | scanner | cash | gpay | evidence | ledger
+
+  // Interactive Simulators (Google Pay & Cash to Shop) Toggle Switch
+  const [showSimulators, setShowSimulators] = useState(() => {
+    try {
+      return localStorage.getItem("toofan_show_simulators") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  function handleToggleSimulators(forceVal) {
+    setShowSimulators((prev) => {
+      const nextVal = typeof forceVal === "boolean" ? forceVal : !prev;
+      try {
+        localStorage.setItem("toofan_show_simulators", String(nextVal));
+      } catch {}
+      if (!nextVal && (activeTab === "gpay" || activeTab === "cash")) {
+        setActiveTab("overview");
+      }
+      return nextVal;
+    });
+  }
   const [selectedLaunderingShop, setSelectedLaunderingShop] = useState("FORT-ROAD-BAKERY");
   const [selectedNode, setSelectedNode] = useState(null);
 
@@ -2490,12 +2512,19 @@ export default function App() {
     };
   }, []);
 
-  const navItems = [
+  const baseNavItems = [
     { key: "overview", label: lang === "ml" ? "പണവഴി ഭൂപടം" : "Money Flow Map", icon: Activity },
-    { key: "scanner", label: lang === "ml" ? "എ.ഐ. ലൊക്കേഷൻ സ്കാനർ" : "AI Location Scanner", icon: MapPin },
-    { key: "evidence", label: lang === "ml" ? "തെളിവ് ശേഖരണ കേന്ദ്രം" : "Seizure Proof Vault", icon: ShieldCheck },
-    { key: "ledger", label: lang === "ml" ? "ഇടപാട് രേഖകൾ" : "Payment Records", icon: Landmark },
+    { key: "scanner", label: lang === "ml" ? "ഷോപ്പ് സ്കാനർ" : "Shop Cash Scanner", icon: MapPin },
+    { key: "evidence", label: lang === "ml" ? "തെളിവ് ശേഖരണം" : "Seizure Proof Vault", icon: ShieldCheck },
+    { key: "ledger", label: lang === "ml" ? "ബാങ്ക് രേഖകൾ" : "Bank Records", icon: Landmark },
   ];
+
+  const simNavItems = [
+    { key: "gpay", label: lang === "ml" ? "ഗൂഗിൾ പേ ആപ്പ്" : "Google Pay Simulator", icon: Smartphone },
+    { key: "cash", label: lang === "ml" ? "ക്യാഷ് ടു ഷോപ്പ്" : "Cash to Shop Counter", icon: Store },
+  ];
+
+  const navItems = showSimulators ? [...baseNavItems, ...simNavItems] : baseNavItems;
 
   // =========================================================================
   // GATEKEEPER CHECK: REQUIRE KERALA POLICE SIGN IN BEFORE ACCESSING SITE
@@ -2615,6 +2644,71 @@ export default function App() {
             </button>
           </div>
 
+          {/* INTERACTIVE SIMULATORS TOGGLE SWITCH IN SIDEBAR */}
+          <div className="sidebar-sim-switch-box">
+            <div className="sim-switch-header-row">
+              <div className="sim-switch-title">
+                <Smartphone size={15} className="text-amber" />
+                <span>{t.simulatorsSwitch}</span>
+              </div>
+              <button
+                type="button"
+                className={`sim-toggle-pill-btn ${showSimulators ? "active-on" : ""}`}
+                onClick={() => {
+                  sounds.playClick();
+                  handleToggleSimulators();
+                }}
+                title={t.simulatorsHint}
+              >
+                <span className="pill-dot" />
+                <span className="pill-text">{showSimulators ? "ON" : "OFF"}</span>
+              </button>
+            </div>
+            <small className="sim-switch-subtext">
+              {showSimulators
+                ? (lang === "ml" ? "സിമുലേറ്ററുകൾ സജീവം: താഴെയുള്ളത് ക്ലിക്ക് ചെയ്യുക" : "Simulators active. Click below to launch:")
+                : (lang === "ml" ? "ഫോൺ & കടയിലെ പണമിടപാട് കാണിക്കാൻ ഓൺ ചെയ്യുക" : "Turn ON to launch Phone & Bakery test tools")}
+            </small>
+
+            {showSimulators && (
+              <div className="sidebar-sim-tools-grid animate-fade-in">
+                <button
+                  type="button"
+                  className={`sidebar-sim-tool-btn gpay ${activeTab === "gpay" ? "active" : ""}`}
+                  onClick={() => {
+                    sounds.playClick();
+                    setActiveTab("gpay");
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Smartphone size={16} />
+                  <div className="tool-btn-texts">
+                    <b>Google Pay</b>
+                    <small>{lang === "ml" ? "വിദ്യാർത്ഥി ഫോൺ" : "Student Phone App"}</small>
+                  </div>
+                  {activeTab === "gpay" && <span className="sim-tool-active-dot" />}
+                </button>
+
+                <button
+                  type="button"
+                  className={`sidebar-sim-tool-btn cash ${activeTab === "cash" ? "active" : ""}`}
+                  onClick={() => {
+                    sounds.playClick();
+                    setActiveTab("cash");
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Store size={16} />
+                  <div className="tool-btn-texts">
+                    <b>Cash to Shop</b>
+                    <small>{lang === "ml" ? "ബേക്കറി കൗണ്ടർ" : "Bakery Laundering"}</small>
+                  </div>
+                  {activeTab === "cash" && <span className="sim-tool-active-dot" />}
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="nav-group-header">{t.navHeader}</div>
           <nav className="sidebar-nav-list">
             {navItems.map(({ key, label, icon: Icon }) => (
@@ -2715,44 +2809,85 @@ export default function App() {
             </div>
 
             <div className="topbar-right-zone">
-              {/* CROSS-DEVICE REAL-TIME CLOUD SYNC PILL */}
-              <div
-                className="cloud-sync-status-pill"
-                title="Cross-Device Cloud Sync: Real-time synchronization active between Phone and PC"
-              >
-                <span className={`sync-pulse-dot ${syncStatus.connected ? "connected" : "connecting"}`} />
-                <div className="sync-pill-text">
-                  <b>{lang === "ml" ? "ക്ലൗഡ് സിങ്ക് സജീവം" : "Cloud Sync Live"}</b>
-                  <small>
-                    {syncStatus.devices > 1
-                      ? (lang === "ml" ? `${syncStatus.devices} ഉപകരണങ്ങൾ (Phone & PC)` : `${syncStatus.devices} Devices Connected (Phone 📱 & PC 💻)`)
-                      : (lang === "ml" ? "1 ഉപകരണം (മൊബൈലിൽ തുറക്കൂ)" : "1 Device (Open on Phone to Sync)")}
-                  </small>
-                </div>
+              {/* INTERACTIVE SIMULATORS SWITCH (GPAY & CASH TO SHOP) */}
+              <div className="topbar-sim-switch-group">
+                <button
+                  type="button"
+                  className={`btn-topbar-sim-switch ${showSimulators ? "active-on" : ""}`}
+                  onClick={() => {
+                    sounds.playClick();
+                    handleToggleSimulators();
+                  }}
+                  title={t.simulatorsHint}
+                >
+                  <Smartphone size={14} className={showSimulators ? "text-amber" : ""} />
+                  <span className="sim-switch-label">
+                    {showSimulators ? t.simulatorsOn : t.simulatorsOff}
+                  </span>
+                  <span className={`sim-toggle-pill-dot ${showSimulators ? "on" : "off"}`} />
+                </button>
+
+                {/* IF SWITCH IS ON: SHOW QUICK BUTTONS TO OPEN GPAY & CASH DESK */}
+                {showSimulators && (
+                  <div className="topbar-sim-quick-buttons animate-fade-in">
+                    <button
+                      className={`btn-sim-quick-btn gpay ${activeTab === "gpay" ? "active" : ""}`}
+                      onClick={() => {
+                        sounds.playClick();
+                        setActiveTab("gpay");
+                      }}
+                      title="Open Google Pay Student Payment Simulator"
+                    >
+                      <Smartphone size={13} />
+                      <span>Google Pay</span>
+                    </button>
+                    <button
+                      className={`btn-sim-quick-btn cash ${activeTab === "cash" ? "active" : ""}`}
+                      onClick={() => {
+                        sounds.playClick();
+                        setActiveTab("cash");
+                      }}
+                      title="Open Cash Handover to Bakery Laundering Desk"
+                    >
+                      <Store size={13} />
+                      <span>Cash to Shop</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* KERALA POLICE ACTIVE OFFICER BADGE & QUICK SIGNOUT */}
-              <div className="police-topbar-signed-group">
-                <button
-                  className="btn-police-profile-top"
-                  onClick={() => { sounds.playClick(); setShowLoginModal(true); }}
-                  title="Kerala Cyber Police Active - Click to view ID card"
-                >
-                  <ShieldCheck size={16} className="text-emerald" />
-                  <div className="police-topbar-profile-info">
-                    <span className="police-tag-badge">KP CYBER CELL</span>
-                    <span className="police-officer-title">{policeUser.officerName}</span>
-                  </div>
-                </button>
+              {/* QUICK STOCK AUDITOR (68J) SHORTCUT */}
+              <button
+                className="btn-topbar-compact-tool"
+                onClick={handleOpenAuditor}
+                title="Audit Suspect Shop Purchases vs Bank Deposits (Sec 68J NDPS Act)"
+              >
+                <Building2 size={13} />
+                <span>Stock Audit</span>
+              </button>
 
-                <button
-                  className="btn-quick-signout-top"
-                  onClick={() => { sounds.playClick(); handlePoliceSignOut(); }}
-                  title={lang === "ml" ? "പോലീസ് സെഷനിൽ നിന്ന് പുറത്തുകടക്കുക (Sign Out)" : "Sign Out of Police Session"}
-                >
-                  <LogOut size={14} />
-                  <span className="signout-btn-text">{t.signOut}</span>
-                </button>
+              {/* SECTION 74 JJ ACT ROLE SWITCHER */}
+              <div className="role-switcher-container" title="Section 74 Juvenile Justice Act, 2015">
+                <div className="role-switcher-pill">
+                  <button
+                    type="button"
+                    className={`role-btn ${appRole === "analyst" ? "active" : ""}`}
+                    onClick={() => { sounds.playClick(); setAppRole("analyst"); }}
+                    title="DANSAF Analyst: Student real names masked to STU-TOKEN-XXXX"
+                  >
+                    <Shield size={12} />
+                    <span>Analyst</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`role-btn ${appRole === "counsellor" ? "active counsellor" : ""}`}
+                    onClick={() => { sounds.playClick(); setAppRole("counsellor"); }}
+                    title="CWC Counsellor: Real identities unmasked for rehabilitation"
+                  >
+                    <HeartHandshake size={12} />
+                    <span>CWC</span>
+                  </button>
+                </div>
               </div>
 
               {/* MALAYALAM / ENGLISH TOGGLE IN TOPBAR */}
@@ -2765,86 +2900,38 @@ export default function App() {
                 <span className="topbar-btn-text">{lang === "en" ? "മലയാളം" : "English"}</span>
               </button>
 
-              {/* RESET TRANSACTIONS BUTTON */}
-              <button
-                className="btn-topbar-reset"
-                onClick={handleResetTransactions}
-                title="Reset all transactions to zero"
-              >
-                <RotateCcw size={14} />
-                <span className="topbar-btn-text">Reset All</span>
-              </button>
+              {/* KERALA POLICE ACTIVE OFFICER BADGE & QUICK SIGNOUT */}
+              <div className="police-topbar-signed-group">
+                <button
+                  className="btn-police-profile-top"
+                  onClick={() => { sounds.playClick(); setShowLoginModal(true); }}
+                  title="Kerala Cyber Police Officer Pass - Click to view ID"
+                >
+                  <ShieldCheck size={16} className="text-emerald" />
+                  <div className="police-topbar-profile-info">
+                    <span className="police-tag-badge">KP CYBER CELL</span>
+                    <span className="police-officer-title">{policeUser.officerName}</span>
+                  </div>
+                </button>
 
-              {/* LOAD PRACTICE DATA BUTTON */}
-              <button
-                className="btn-topbar-load-demo"
-                onClick={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
-                title="Load practice sample transactions for testing"
-              >
-                <Sparkles size={14} />
-                <span className="topbar-btn-text">Load Practice Data</span>
-              </button>
-
-              {/* SECTION 74 JJ ACT ROLE SWITCHER */}
-              <div className="role-switcher-container" title="Section 74 Juvenile Justice Act, 2015 Compliance: Mask minor identity in analyst mode">
-                <div className="role-switcher-pill">
-                  <button
-                    type="button"
-                    className={`role-btn ${appRole === "analyst" ? "active" : ""}`}
-                    onClick={() => { sounds.playClick(); setAppRole("analyst"); }}
-                    title="DANSAF / Excise Analyst: Minor real names, phone numbers, and schools are strictly pseudonymised to STU-TOKEN-XXXX"
-                  >
-                    <Shield size={13} />
-                    <span>DANSAF Analyst</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`role-btn ${appRole === "counsellor" ? "active counsellor" : ""}`}
-                    onClick={() => { sounds.playClick(); setAppRole("counsellor"); }}
-                    title="CWC / Vimukthi Counsellor: Minor names unmasked for rehabilitation routing & de-addiction counselling"
-                  >
-                    <HeartHandshake size={13} />
-                    <span>CWC Counsellor</span>
-                  </button>
-                </div>
-                <span className={`jj-act-badge ${appRole === "analyst" ? "masked" : "unmasked"}`}>
-                  {appRole === "analyst" ? "⚖️ Sec 74 JJ Act (Masked)" : "🔓 CWC De-Addiction Access"}
-                </span>
+                <button
+                  className="btn-quick-signout-top"
+                  onClick={() => { sounds.playClick(); handlePoliceSignOut(); }}
+                  title={lang === "ml" ? "പുറത്തുകടക്കുക" : "Sign Out"}
+                >
+                  <LogOut size={13} />
+                </button>
               </div>
 
-              {/* QUICK SECTION 94 BNSS REQUISITION GENERATOR BUTTON */}
-              <button
-                className="btn-open-scanner-top desktop-only-btn"
-                onClick={() => handleOpenSec94({ targetId: "FAKE-ACC-7A", targetType: "upi_vpa", amount: 5600 })}
-                title="Generate formal Police Requisition Notice to Bank Nodal Officer under Section 94 BNSS, 2023"
-                style={{ background: "#eff6ff", color: "#1d4ed8", borderColor: "#bfdbfe" }}
+              {/* CLOUD SYNC COMPACT DOT */}
+              <div
+                className="cloud-sync-compact-dot"
+                title={syncStatus.devices > 1 ? `Cloud Sync Active: ${syncStatus.devices} Devices Connected (Phone & PC)` : "Cloud Sync Active: 1 Device Connected"}
               >
-                <FileText size={14} />
-                <span className="topbar-btn-text">Sec 94 BNSS Notice</span>
-              </button>
-
-              {/* QUICK FRONT-SHOP STOCK AUDITOR BUTTON (NDPS 68J) */}
-              <button
-                className="btn-open-scanner-top desktop-only-btn"
-                onClick={handleOpenAuditor}
-                title="Audit Suspect Shop Wholesale Purchases vs Bank Deposits (Section 68J NDPS Act Reverse Burden)"
-                style={{ background: "#fef3c7", color: "#92400e", borderColor: "#fde68a" }}
-              >
-                <Building2 size={14} />
-                <span className="topbar-btn-text">Stock Auditor (68J)</span>
-              </button>
-
-              {/* QUICK AI LOCATION SCANNER SHORTCUT BUTTON */}
-              <button
-                className="btn-open-scanner-top desktop-only-btn"
-                onClick={() => { sounds.playClick(); setActiveTab("scanner"); }}
-                title="AI Location & Sudden Cash Jump Scanner"
-              >
-                <MapPin size={14} />
-                <span className="topbar-btn-text">AI Location Scanner</span>
-              </button>
+                <span className={`sync-pulse-dot ${syncStatus.connected ? "connected" : "connecting"}`} />
+              </div>
             </div>
-          </header>
+                    </header>
 
           {/* FLOATING REAL-TIME CROSS-DEVICE SYNC TOAST */}
           {liveSyncToast && (
@@ -2935,7 +3022,7 @@ export default function App() {
                         onClick={toggleSimulation}
                       >
                         {simulating ? <Pause size={14} /> : <Play size={14} />}
-                        <span>{simulating ? "Pause Walkthrough" : "▶ Watch Money Move"}</span>
+                        <span>{simulating ? "Pause Walkthrough" : "Watch Money Move"}</span>
                       </button>
                     </div>
                   </div>
@@ -2944,7 +3031,7 @@ export default function App() {
                     <div className="status-strip-banner clean-slate">
                       <span className="banner-dot green" />
                       <span>
-                        <b>System in Clean Slate Mode (0 Active Transactions):</b> Switching viewing modes stays at 0. Record a payment in Google Pay Simulator or click <b>Load Practice Data</b>.
+                        <b>System in Clean Slate Mode (0 Active Transactions):</b> No active transactions. Turn on <b>Simulator Tools</b> switch to send a payment, or click <b>Load Practice Data</b>.
                       </span>
                     </div>
                   ) : (
