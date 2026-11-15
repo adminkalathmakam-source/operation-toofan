@@ -242,7 +242,7 @@ function money(value) {
 // ----------------------------------------------------
 // OFFICIAL TOPOLOGY GRAPH VISUALIZER
 // ----------------------------------------------------
-function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, activeHighlightEdge, onLoadDemo, onOpenGPay, isAnalyzing = false }) {
+function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, activeHighlightEdge, onLoadDemo, isAnalyzing = false }) {
   const [minAmount, setMinAmount] = useState(0);
   const [animateParticles, setAnimateParticles] = useState(true);
 
@@ -523,12 +523,6 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
                 <button className="btn-load-demo-inline" onClick={onLoadDemo}>
                   <Play size={13} />
                   <span>Load Sample Money Trail</span>
-                </button>
-              )}
-              {onOpenGPay && (
-                <button className="btn-load-demo-inline secondary" onClick={onOpenGPay}>
-                  <Smartphone size={13} />
-                  <span>Make Payment in Google Pay</span>
                 </button>
               )}
             </div>
@@ -1687,7 +1681,7 @@ function OfficialEvidenceWizard() {
 // ----------------------------------------------------
 // SIMPLIFIED TRANSACTION FORENSICS LEDGER
 // ----------------------------------------------------
-function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo, onOpenGPay, onOpenSec94 }) {
+function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo, onOpenSec94 }) {
   const [filterQuery, setFilterQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState("all");
 
@@ -1798,18 +1792,12 @@ function OfficialTransactionLedger({ transactions, privacy, onReset, onLoadDemo,
                       <Landmark size={24} />
                     </div>
                     <b>No Transactions Recorded</b>
-                    <p>All transactions have been reset to 0. Send a payment in Google Pay or load test data.</p>
+                    <p>All transactions have been reset to 0. Click below to load sample investigation records.</p>
                     <div className="empty-state-actions-cluster">
                       {onLoadDemo && (
                         <button className="btn-empty-load-demo" onClick={onLoadDemo}>
                           <Play size={13} />
                           <span>Load Sample Transactions</span>
-                        </button>
-                      )}
-                      {onOpenGPay && (
-                        <button className="btn-empty-load-demo secondary" onClick={onOpenGPay}>
-                          <Smartphone size={13} />
-                          <span>Make Payment in Google Pay</span>
                         </button>
                       )}
                     </div>
@@ -2503,12 +2491,10 @@ export default function App() {
   }, []);
 
   const navItems = [
-    { key: "overview", label: t.navOverview, icon: Activity },
-    { key: "scanner", label: t.navScanner, icon: MapPin },
-    { key: "cash", label: t.navCash, icon: Banknote },
-    { key: "gpay", label: t.navGpay, icon: Smartphone },
-    { key: "evidence", label: t.navEvidence, icon: ShieldCheck },
-    { key: "ledger", label: t.navLedger, icon: Landmark },
+    { key: "overview", label: lang === "ml" ? "പണവഴി ഭൂപടം" : "Money Flow Map", icon: Activity },
+    { key: "scanner", label: lang === "ml" ? "എ.ഐ. ലൊക്കേഷൻ സ്കാനർ" : "AI Location Scanner", icon: MapPin },
+    { key: "evidence", label: lang === "ml" ? "തെളിവ് ശേഖരണ കേന്ദ്രം" : "Seizure Proof Vault", icon: ShieldCheck },
+    { key: "ledger", label: lang === "ml" ? "ഇടപാട് രേഖകൾ" : "Payment Records", icon: Landmark },
   ];
 
   // =========================================================================
@@ -2601,6 +2587,34 @@ export default function App() {
             </button>
           </div>
 
+          {/* DEDICATED POLICE OFFICER DUTY BUTTON ON THE SIDE */}
+          <div className="sidebar-police-section">
+            <button
+              type="button"
+              className="sidebar-police-card-btn"
+              onClick={() => {
+                sounds.playClick();
+                setShowLoginModal(true);
+                setMenuOpen(false);
+              }}
+              title="Open Kerala Police Officer ID & Duty Pass"
+            >
+              <div className="police-side-icon-box">
+                <ShieldCheck size={22} className="text-emerald" />
+                <span className="police-side-pulse-dot" />
+              </div>
+              <div className="police-side-text-col">
+                <div className="police-side-tag-row">
+                  <span className="police-side-tag">KERALA POLICE</span>
+                  <span className="police-side-live">● ON DUTY</span>
+                </div>
+                <b className="police-side-name">{policeUser?.officerName || "SI Rahul K."}</b>
+                <small className="police-side-dept">Badge #{policeUser?.badgeNumber || "8842"} · Cyber Cell</small>
+              </div>
+              <ChevronRight size={15} className="police-side-arrow" />
+            </button>
+          </div>
+
           <div className="nav-group-header">{t.navHeader}</div>
           <nav className="sidebar-nav-list">
             {navItems.map(({ key, label, icon: Icon }) => (
@@ -2618,6 +2632,21 @@ export default function App() {
                 {activeTab === key && <ChevronRight size={14} className="nav-active-arrow" />}
               </button>
             ))}
+
+            <button
+              type="button"
+              className="sidebar-nav-item police-quick-nav-item"
+              onClick={() => {
+                sounds.playClick();
+                setShowLoginModal(true);
+                setMenuOpen(false);
+              }}
+              style={{ color: "#38bdf8", borderLeft: "2px solid #38bdf8" }}
+            >
+              <Shield size={17} className="text-sky" />
+              <span>{lang === "ml" ? "പോലീസ് ഐ.ഡി. പാസ്സ്" : "Police Duty Pass"}</span>
+              <span className="nav-police-status-pill">Active</span>
+            </button>
           </nav>
 
           <div className="nav-group-header">{t.perspectivesHeader}</div>
@@ -2813,25 +2842,6 @@ export default function App() {
               >
                 <MapPin size={14} />
                 <span className="topbar-btn-text">AI Location Scanner</span>
-              </button>
-
-              {/* QUICK CASH DESK SHORTCUT BUTTON */}
-              <button
-                className="btn-open-cash-top desktop-only-btn"
-                onClick={() => { sounds.playClick(); setActiveTab("cash"); }}
-                title="Physical Cash to Shop Laundering"
-              >
-                <Banknote size={14} />
-                <span className="topbar-btn-text">Cash to Shop</span>
-              </button>
-
-              {/* QUICK GPAY SHORTCUT BUTTON */}
-              <button
-                className="btn-open-gpay-top desktop-only-btn"
-                onClick={() => { sounds.playClick(); setActiveTab("gpay"); }}
-              >
-                <Smartphone size={14} />
-                <span className="topbar-btn-text">Open GPay Demo</span>
               </button>
             </div>
           </header>
@@ -3063,10 +3073,6 @@ export default function App() {
                   onSelectNode={setSelectedNode}
                   activeHighlightEdge={activeHighlightEdge}
                   onLoadDemo={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
-                  onOpenGPay={() => {
-                    sounds.playClick();
-                    setActiveTab("gpay");
-                  }}
                   isAnalyzing={isAnalyzing}
                 />
 
@@ -3347,10 +3353,6 @@ export default function App() {
                   privacy={privacy}
                   onReset={handleResetTransactions}
                   onLoadDemo={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
-                  onOpenGPay={() => {
-                    sounds.playClick();
-                    setActiveTab("gpay");
-                  }}
                   onOpenSec94={handleOpenSec94}
                 />
               </div>
@@ -3403,13 +3405,28 @@ export default function App() {
             <span className="bottom-nav-label">
               {key === "overview" && (lang === "ml" ? "പണവഴി" : "Money Flow")}
               {key === "scanner" && (lang === "ml" ? "സ്കാനർ" : "AI Scanner")}
-              {key === "cash" && (lang === "ml" ? "ക്യാഷ്" : "Cash Desk")}
-              {key === "gpay" && (lang === "ml" ? "ഗൂഗിൾ പേ" : "Google Pay")}
               {key === "evidence" && (lang === "ml" ? "തെളിവ്" : "Proof Vault")}
               {key === "ledger" && (lang === "ml" ? "രേഖകൾ" : "Records")}
             </span>
           </button>
         ))}
+
+        {/* POLICE PASS BUTTON ON MOBILE DOCK */}
+        <button
+          className="mobile-bottom-nav-item police-dock-btn"
+          onClick={() => {
+            sounds.playClick();
+            setShowLoginModal(true);
+          }}
+          title="Open Kerala Police Officer Pass"
+        >
+          <div className="bottom-nav-icon-wrap">
+            <ShieldCheck size={20} className="text-emerald" />
+          </div>
+          <span className="bottom-nav-label" style={{ color: "#10b981", fontWeight: "700" }}>
+            {lang === "ml" ? "പോലീസ്" : "Police ID"}
+          </span>
+        </button>
       </nav>
     </div>
   );

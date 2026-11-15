@@ -9102,3 +9102,336 @@ button, input, select {
   padding: 1px 4px;
   border-radius: 3px;
 }
+
+
+/* ==========================================================================
+   POLICE DUTY PASS & SIDEBAR ELEVATION (BEST-OF-THE-BEST POLICE CYBER UI)
+   ========================================================================== */
+
+.sidebar-police-section {
+  margin: 10px 10px 6px;
+}
+
+.sidebar-police-card-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.92));
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-police-card-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, #10b981, #38bdf8);
+}
+
+.sidebar-police-card-btn:hover {
+  border-color: #38bdf8;
+  background: linear-gradient(135deg, rgba(23, 37, 84, 0.95), rgba(30, 41, 59, 0.98));
+  box-shadow: 0 6px 22px rgba(56, 189, 248, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: translateY(-1.5px);
+}
+
+.sidebar-police-card-btn:active {
+  transform: translateY(0);
+}
+
+.police-side-icon-box {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.police-side-pulse-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981, 0 0 4px #fff;
+  animation: pulse-duty-dot 2s infinite ease-in-out;
+}
+
+@keyframes pulse-duty-dot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 10px #10b981;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.85;
+    box-shadow: 0 0 16px #10b981, 0 0 6px #38bdf8;
+  }
+}
+
+.police-side-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.police-side-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.police-side-tag {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.police-side-live {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #10b981;
+  letter-spacing: 0.03em;
+}
+
+.police-side-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  line-height: 1.2;
+}
+
+.police-side-dept {
+  font-size: 10px;
+  color: #94a3b8;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.police-side-arrow {
+  margin-left: auto;
+  color: #64748b;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-police-card-btn:hover .police-side-arrow {
+  color: #38bdf8;
+  transform: translateX(2px);
+}
+
+.police-quick-nav-item {
+  position: relative;
+  background: rgba(56, 189, 248, 0.05) !important;
+}
+
+.police-quick-nav-item:hover {
+  background: rgba(56, 189, 248, 0.12) !important;
+}
+
+.nav-police-status-pill {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 800;
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 2px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Mobile Bottom Dock Police Button */
+.police-dock-btn {
+  position: relative;
+}
+
+.police-dock-btn .bottom-nav-icon-wrap {
+  position: relative;
+}
+
+.police-dock-btn:hover {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+/* Topbar Police Signed-In Button & Status */
+.police-topbar-signed-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-police-profile-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 11px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9));
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 999px;
+  color: #f1f5f9;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.btn-police-profile-top:hover {
+  border-color: #10b981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(30, 41, 59, 0.95));
+  box-shadow: 0 3px 12px rgba(16, 185, 129, 0.3);
+  transform: translateY(-1px);
+}
+
+.police-topbar-profile-info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.1;
+}
+
+.police-tag-badge {
+  font-size: 8px;
+  font-weight: 800;
+  color: #10b981;
+  letter-spacing: 0.05em;
+}
+
+.police-officer-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.btn-quick-signout-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  color: #f87171;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-quick-signout-top:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #fecaca;
+  transform: translateY(-1px);
+}
+
+/* POLICE MODAL CARD SIMPLE ENGLISH ENHANCEMENTS */
+.police-modal-card {
+  max-width: 520px !important;
+  background: linear-gradient(170deg, #0f172a 0%, #111827 50%, #0b0f19 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.15) !important;
+}
+
+.officer-card-dossier {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95)) !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.btn-officer-continue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  padding: 11px 16px;
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-officer-continue:hover {
+  background: linear-gradient(135deg, #0369a1, #075985);
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-officer-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 16px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 10px;
+  color: #fca5a5;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-officer-logout:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* Smooth glassmorphic transitions for executive dashboard */
+.executive-kpi-grid {
+  gap: 14px;
+}
+
+.kpi-card {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, border-color 0.22s ease !important;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 15px rgba(56, 189, 248, 0.12);
+}
+
+.scenario-chip-card {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scenario-chip-card:hover {
+  transform: translateY(-1px);
+}
