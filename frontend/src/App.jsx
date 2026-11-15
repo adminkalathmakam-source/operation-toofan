@@ -159,36 +159,11 @@ const SCENARIOS = {
 };
 
 const VIEW_MODES = {
-  all: {
-    label: "🌐 Multi-Account Money Web",
-    desc: "Complete network map across all accounts & trails",
-    badge: "FULL NETWORK",
-  },
-  direct: {
-    label: "⚡ Split Transfers to Fake Acc",
-    desc: "Multiple senders routing directly to fake accounts",
-    badge: "CONVERGENCE",
-  },
-  candy: {
-    label: "🍬 Shop & QR Routing",
-    desc: "Student QR payments routed through shop to fake acc",
-    badge: "MERCHANT HOPS",
-  },
-  cdmLoop: {
-    label: "🏧 CDM -> UPI Smurfing Loop",
-    desc: "Structured Cash Deposit (< ₹10k) swept to Cashout Hub in 22 min",
-    badge: "SMURFING LOOP",
-  },
-  cashDeposit: {
-    label: "💵 Suspicious Cash Spikes",
-    desc: "High-value cash jumps and abnormal shop deposits",
-    badge: "CASH ALERTS",
-  },
-  cashLaundering: {
-    label: "💵 Cash Stash & Bakery Counter",
-    desc: "Provider pools student cash (₹2,000) → Bakery counter → Alt Acc → Hub",
-    badge: "CASH LAUNDERING",
-  },
+  all: { label: "All Network", labelMl: "എല്ലാം", key: "all" },
+  direct: { label: "Direct Mules", labelMl: "വ്യാജ അക്കൗണ്ട്", key: "direct" },
+  candy: { label: "Shop QR", labelMl: "കടകൾ", key: "candy" },
+  cdmLoop: { label: "ATM Loop", labelMl: "എ.ടി.എം. ലൂപ്പ്", key: "cdmLoop" },
+  cashLaundering: { label: "Cash Stash", labelMl: "പണമിടപാട്", key: "cashLaundering" },
 };
 
 const SIMULATION_SCRIPTS = {
@@ -2540,43 +2515,11 @@ export default function App() {
   }
 
   return (
-    <div className="official-app-container">
+    <div className="official-app-container pro-theme">
       {/* GLOBAL TOP SCANNER LOADER */}
       {isAnalyzing && <div className="global-top-scanner-bar" />}
 
-      {/* OFFICIAL HEADER BANNER */}
-      <div className="official-top-banner">
-        <div className="banner-left-brand">
-          <FlaskConical size={14} className="text-sky" />
-          <span className="banner-text-tagline">
-            <b>{t.appTitle}</b>
-            <span className="banner-subtext"> · {t.appSubtitle}</span>
-          </span>
-        </div>
-
-        <div className="banner-right-controls">
-          {/* MALAYALAM / ENGLISH LANGUAGE PILL */}
-          <button
-            className={`banner-lang-pill ${lang === "ml" ? "ml-mode" : ""}`}
-            onClick={toggleLanguage}
-            title={lang === "en" ? "മലയാളം മോഡിലേക്ക് മാറ്റുക (Switch to Malayalam)" : "Switch to English"}
-          >
-            <Languages size={13} />
-            <b>{lang === "en" ? "മലയാളം" : "English"}</b>
-          </button>
-
-          <button
-            className="banner-sound-switch"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            title="Toggle Sound Effects"
-          >
-            {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
-            <span className="banner-audio-label">{soundEnabled ? "Audio On" : "Audio Muted"}</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="official-layout-wrapper">
+      <div className="official-layout-body">
         {/* MOBILE SIDEBAR BACKDROP */}
         {menuOpen && (
           <div
@@ -2586,15 +2529,15 @@ export default function App() {
           />
         )}
 
-        {/* OFFICIAL SIDEBAR */}
+        {/* STREAMLINED EXECUTIVE SIDEBAR */}
         <aside className={`official-sidebar ${menuOpen ? "open" : ""}`}>
           <div className="sidebar-brand-block">
             <div className="emblem-box">
-              <Shield size={22} />
+              <Shield size={20} className="text-sky" />
             </div>
             <div className="emblem-text-wrap">
-              <b className="emblem-title">TOOFAN<span>SHIELD</span></b>
-              <small className="emblem-subtitle">MONEY TRACKER</small>
+              <b className="emblem-title">TOOFAN <span className="text-sky">SHIELD</span></b>
+              <small className="emblem-subtitle">POLICE CYBER COMMAND</small>
             </div>
             <button
               className="btn-sidebar-close-mobile"
@@ -2605,552 +2548,376 @@ export default function App() {
             </button>
           </div>
 
-          {/* SIDEBAR LANGUAGE SWITCHER */}
-          <div className="sidebar-lang-container">
-            <button
-              className={`sidebar-lang-toggle-btn ${lang === "ml" ? "ml-active" : ""}`}
-              onClick={toggleLanguage}
-            >
-              <Languages size={15} />
-              <span>{lang === "en" ? "മലയാളം മോഡ് (Malayalam)" : "English Mode"}</span>
-            </button>
-          </div>
-
-          {/* DEDICATED POLICE OFFICER DUTY BUTTON ON THE SIDE */}
-          <div className="sidebar-police-section">
+          {/* OFFICER DUTY PASS STRIP */}
+          <div className="sidebar-officer-strip">
             <button
               type="button"
-              className="sidebar-police-card-btn"
+              className="sidebar-officer-card"
               onClick={() => {
                 sounds.playClick();
                 setShowLoginModal(true);
                 setMenuOpen(false);
               }}
-              title="Open Kerala Police Officer ID & Duty Pass"
+              title="Click to view Kerala Police Duty Pass"
             >
-              <div className="police-side-icon-box">
-                <ShieldCheck size={22} className="text-emerald" />
-                <span className="police-side-pulse-dot" />
+              <div className="officer-badge-avatar">
+                <ShieldCheck size={18} className="text-emerald" />
+                <span className="officer-live-dot" />
               </div>
-              <div className="police-side-text-col">
-                <div className="police-side-tag-row">
-                  <span className="police-side-tag">KERALA POLICE</span>
-                  <span className="police-side-live">● ON DUTY</span>
+              <div className="officer-card-info">
+                <div className="officer-card-top-row">
+                  <span className="officer-tag">KERALA POLICE</span>
+                  <span className="officer-status-badge">ACTIVE</span>
                 </div>
-                <b className="police-side-name">{policeUser?.officerName || "SI Rahul K."}</b>
-                <small className="police-side-dept">Badge #{policeUser?.badgeNumber || "8842"} · Cyber Cell</small>
+                <b className="officer-name">{policeUser?.officerName || "SI Rahul K."}</b>
+                <small className="officer-badge-id">Badge #{policeUser?.badgeNumber || "8842"}</small>
               </div>
-              <ChevronRight size={15} className="police-side-arrow" />
+              <ChevronRight size={14} className="officer-card-arrow" />
             </button>
           </div>
 
-          {/* INTERACTIVE SIMULATORS TOGGLE SWITCH IN SIDEBAR */}
-          <div className="sidebar-sim-switch-box">
-            <div className="sim-switch-header-row">
-              <div className="sim-switch-title">
-                <Smartphone size={15} className="text-amber" />
-                <span>{t.simulatorsSwitch}</span>
-              </div>
-              <button
-                type="button"
-                className={`sim-toggle-pill-btn ${showSimulators ? "active-on" : ""}`}
-                onClick={() => {
-                  sounds.playClick();
-                  handleToggleSimulators();
-                }}
-                title={t.simulatorsHint}
-              >
-                <span className="pill-dot" />
-                <span className="pill-text">{showSimulators ? "ON" : "OFF"}</span>
-              </button>
-            </div>
-            <small className="sim-switch-subtext">
-              {showSimulators
-                ? (lang === "ml" ? "സിമുലേറ്ററുകൾ സജീവം: താഴെയുള്ളത് ക്ലിക്ക് ചെയ്യുക" : "Simulators active. Click below to launch:")
-                : (lang === "ml" ? "ഫോൺ & കടയിലെ പണമിടപാട് കാണിക്കാൻ ഓൺ ചെയ്യുക" : "Turn ON to launch Phone & Bakery test tools")}
-            </small>
-
-            {showSimulators && (
-              <div className="sidebar-sim-tools-grid animate-fade-in">
+          {/* MAIN NAVIGATION */}
+          <div className="sidebar-nav-section">
+            <div className="sidebar-section-label">{lang === "ml" ? "പ്രധാന വിഭാഗങ്ങൾ" : "INVESTIGATION"}</div>
+            <nav className="sidebar-nav-list">
+              {baseNavItems.map(({ key, label, icon: Icon }) => (
                 <button
-                  type="button"
-                  className={`sidebar-sim-tool-btn gpay ${activeTab === "gpay" ? "active" : ""}`}
+                  key={key}
+                  className={`sidebar-nav-item ${activeTab === key ? "active" : ""}`}
                   onClick={() => {
                     sounds.playClick();
-                    setActiveTab("gpay");
+                    setActiveTab(key);
                     setMenuOpen(false);
                   }}
                 >
-                  <Smartphone size={16} />
-                  <div className="tool-btn-texts">
-                    <b>Google Pay</b>
-                    <small>{lang === "ml" ? "വിദ്യാർത്ഥി ഫോൺ" : "Student Phone App"}</small>
-                  </div>
-                  {activeTab === "gpay" && <span className="sim-tool-active-dot" />}
+                  <Icon size={16} />
+                  <span>{label}</span>
+                  {activeTab === key && <span className="nav-active-indicator" />}
                 </button>
+              ))}
+            </nav>
+          </div>
 
+          {/* SIMULATOR TOOLS SWITCH */}
+          <div className="sidebar-sim-section">
+            <div className="sidebar-sim-card">
+              <div className="sim-card-top">
+                <div className="sim-card-title">
+                  <Smartphone size={15} className="text-amber" />
+                  <span>{t.simulatorsSwitch}</span>
+                </div>
                 <button
                   type="button"
-                  className={`sidebar-sim-tool-btn cash ${activeTab === "cash" ? "active" : ""}`}
-                  onClick={() => {
-                    sounds.playClick();
-                    setActiveTab("cash");
-                    setMenuOpen(false);
-                  }}
-                >
-                  <Store size={16} />
-                  <div className="tool-btn-texts">
-                    <b>Cash to Shop</b>
-                    <small>{lang === "ml" ? "ബേക്കറി കൗണ്ടർ" : "Bakery Laundering"}</small>
-                  </div>
-                  {activeTab === "cash" && <span className="sim-tool-active-dot" />}
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="nav-group-header">{t.navHeader}</div>
-          <nav className="sidebar-nav-list">
-            {navItems.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                className={`sidebar-nav-item ${activeTab === key ? "active" : ""}`}
-                onClick={() => {
-                  sounds.playClick();
-                  setActiveTab(key);
-                  setMenuOpen(false);
-                }}
-              >
-                <Icon size={17} />
-                <span>{label}</span>
-                {activeTab === key && <ChevronRight size={14} className="nav-active-arrow" />}
-              </button>
-            ))}
-
-            <button
-              type="button"
-              className="sidebar-nav-item police-quick-nav-item"
-              onClick={() => {
-                sounds.playClick();
-                setShowLoginModal(true);
-                setMenuOpen(false);
-              }}
-              style={{ color: "#38bdf8", borderLeft: "2px solid #38bdf8" }}
-            >
-              <Shield size={17} className="text-sky" />
-              <span>{lang === "ml" ? "പോലീസ് ഐ.ഡി. പാസ്സ്" : "Police Duty Pass"}</span>
-              <span className="nav-police-status-pill">Active</span>
-            </button>
-          </nav>
-
-          <div className="nav-group-header">{t.perspectivesHeader}</div>
-          <div className="sidebar-scenarios-stack">
-            {Object.entries(VIEW_MODES).map(([vKey, mode]) => (
-              <button
-                key={vKey}
-                className={`scenario-btn-item ${viewMode === vKey ? "active" : ""}`}
-                onClick={() => handleSelectViewMode(vKey)}
-                title={`Switch viewing mode to ${mode.label}`}
-              >
-                <Eye size={12} />
-                <span>{mode.label}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="nav-group-header">{t.practiceHeader}</div>
-          <div className="sidebar-scenarios-stack">
-            <button
-              className="scenario-btn-item reset-btn"
-              onClick={handleResetTransactions}
-              title="Reset all transactions to zero"
-            >
-              <RotateCcw size={12} />
-              <span>Reset All (Clean Slate)</span>
-            </button>
-            <button
-              className="scenario-btn-item demo-load-btn"
-              onClick={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
-              title="Load sample practice transactions for testing"
-            >
-              <Sparkles size={12} />
-              <span>Load Practice Demo Data</span>
-            </button>
-          </div>
-
-          <div className="sidebar-footer-box">
-            <div className="footer-status-line">
-              <span className="live-status-dot" />
-              <span>TRACKING ENGINE READY</span>
-            </div>
-            <small>Local Engine Port 8000 · v0.2.0</small>
-          </div>
-        </aside>
-
-        {/* MAIN DISPLAY CANVAS */}
-        <div className="official-main-viewport">
-          <header className="official-topbar">
-            <div className="topbar-left-zone">
-              <button className="btn-mobile-menu" onClick={() => setMenuOpen(!menuOpen)}>
-                {menuOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
-              <div className="topbar-breadcrumbs">
-                <span>TOOFAN Tracker</span>
-                <ChevronRight size={13} />
-                <b>
-                  {activeTab === "overview" && t.crumbOverview}
-                  {activeTab === "scanner" && t.crumbScanner}
-                  {activeTab === "cash" && t.crumbCash}
-                  {activeTab === "gpay" && t.crumbGpay}
-                  {activeTab === "evidence" && t.crumbEvidence}
-                  {activeTab === "ledger" && t.crumbLedger}
-                </b>
-              </div>
-            </div>
-
-            <div className="topbar-right-zone">
-              {/* INTERACTIVE SIMULATORS SWITCH (GPAY & CASH TO SHOP) */}
-              <div className="topbar-sim-switch-group">
-                <button
-                  type="button"
-                  className={`btn-topbar-sim-switch ${showSimulators ? "active-on" : ""}`}
+                  className={`sim-switch-pill ${showSimulators ? "on" : "off"}`}
                   onClick={() => {
                     sounds.playClick();
                     handleToggleSimulators();
                   }}
                   title={t.simulatorsHint}
                 >
-                  <Smartphone size={14} className={showSimulators ? "text-amber" : ""} />
-                  <span className="sim-switch-label">
-                    {showSimulators ? t.simulatorsOn : t.simulatorsOff}
+                  <span className="switch-dot" />
+                  <span>{showSimulators ? "ON" : "OFF"}</span>
+                </button>
+              </div>
+
+              {showSimulators && (
+                <div className="sidebar-sim-links-stack animate-fade-in">
+                  <button
+                    type="button"
+                    className={`sidebar-sim-link ${activeTab === "gpay" ? "active" : ""}`}
+                    onClick={() => {
+                      sounds.playClick();
+                      setActiveTab("gpay");
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <Smartphone size={14} className="text-sky" />
+                    <span>Google Pay Simulator</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`sidebar-sim-link ${activeTab === "cash" ? "active" : ""}`}
+                    onClick={() => {
+                      sounds.playClick();
+                      setActiveTab("cash");
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <Store size={14} className="text-emerald" />
+                    <span>Cash to Shop Desk</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SIDEBAR FOOTER QUICK ACTIONS */}
+          <div className="sidebar-bottom-bar">
+            <button
+              className="sidebar-action-icon-btn"
+              onClick={handleResetTransactions}
+              title="Reset All Transactions to 0"
+            >
+              <RotateCcw size={13} />
+              <span>Reset</span>
+            </button>
+            <button
+              className="sidebar-action-icon-btn primary"
+              onClick={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
+              title="Load Demo Data"
+            >
+              <Sparkles size={13} />
+              <span>Demo</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* MAIN VIEWPORT */}
+        <div className="official-main-viewport">
+          {/* SINGLE STREAMLINED EXECUTIVE TOPBAR */}
+          <header className="official-topbar">
+            <div className="topbar-left-zone">
+              <button className="btn-mobile-menu" onClick={() => setMenuOpen(!menuOpen)}>
+                {menuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+              <div className="topbar-branding-line">
+                <span className="topbar-brand-title">TOOFAN <span className="text-sky">SHIELD</span></span>
+                <span className="topbar-sep">/</span>
+                <b className="topbar-active-tab-title">
+                  {activeTab === "overview" && (lang === "ml" ? "പണവഴി ഭൂപടം" : "Money Flow Map")}
+                  {activeTab === "scanner" && (lang === "ml" ? "ഷോപ്പ് സ്കാനർ" : "Shop Cash Scanner")}
+                  {activeTab === "cash" && (lang === "ml" ? "ക്യാഷ് ടു ഷോപ്പ്" : "Cash to Shop Desk")}
+                  {activeTab === "gpay" && (lang === "ml" ? "ഗൂഗിൾ പേ ആപ്പ്" : "Google Pay Simulator")}
+                  {activeTab === "evidence" && (lang === "ml" ? "തെളിവ് ശേഖരണം" : "Seizure Proof Vault")}
+                  {activeTab === "ledger" && (lang === "ml" ? "ബാങ്ക് രേഖകൾ" : "Bank Records")}
+                </b>
+              </div>
+            </div>
+
+            <div className="topbar-right-zone">
+              {/* INTERACTIVE SIMULATORS SWITCH */}
+              <div className="topbar-sim-group">
+                <button
+                  type="button"
+                  className={`btn-topbar-sim ${showSimulators ? "on" : "off"}`}
+                  onClick={() => {
+                    sounds.playClick();
+                    handleToggleSimulators();
+                  }}
+                  title="Toggle Phone Payment & Cash Desk Simulators"
+                >
+                  <Smartphone size={13} className={showSimulators ? "text-amber" : ""} />
+                  <span>Simulators</span>
+                  <span className={`sim-indicator-pill ${showSimulators ? "on" : "off"}`}>
+                    {showSimulators ? "ON" : "OFF"}
                   </span>
-                  <span className={`sim-toggle-pill-dot ${showSimulators ? "on" : "off"}`} />
                 </button>
 
-                {/* IF SWITCH IS ON: SHOW QUICK BUTTONS TO OPEN GPAY & CASH DESK */}
                 {showSimulators && (
-                  <div className="topbar-sim-quick-buttons animate-fade-in">
+                  <div className="topbar-sim-actions animate-fade-in">
                     <button
-                      className={`btn-sim-quick-btn gpay ${activeTab === "gpay" ? "active" : ""}`}
+                      className={`btn-sim-pill gpay ${activeTab === "gpay" ? "active" : ""}`}
                       onClick={() => {
                         sounds.playClick();
                         setActiveTab("gpay");
                       }}
-                      title="Open Google Pay Student Payment Simulator"
                     >
-                      <Smartphone size={13} />
-                      <span>Google Pay</span>
+                      <Smartphone size={12} />
+                      <span>GPay</span>
                     </button>
                     <button
-                      className={`btn-sim-quick-btn cash ${activeTab === "cash" ? "active" : ""}`}
+                      className={`btn-sim-pill cash ${activeTab === "cash" ? "active" : ""}`}
                       onClick={() => {
                         sounds.playClick();
                         setActiveTab("cash");
                       }}
-                      title="Open Cash Handover to Bakery Laundering Desk"
                     >
-                      <Store size={13} />
-                      <span>Cash to Shop</span>
+                      <Store size={12} />
+                      <span>Cash Desk</span>
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* QUICK STOCK AUDITOR (68J) SHORTCUT */}
+              {/* QUICK STOCK AUDIT BUTTON */}
               <button
-                className="btn-topbar-compact-tool"
+                className="btn-topbar-tool"
                 onClick={handleOpenAuditor}
-                title="Audit Suspect Shop Purchases vs Bank Deposits (Sec 68J NDPS Act)"
+                title="NDPS 68J Suspect Shop Stock vs Cash Audit"
               >
                 <Building2 size={13} />
                 <span>Stock Audit</span>
               </button>
 
-              {/* SECTION 74 JJ ACT ROLE SWITCHER */}
-              <div className="role-switcher-container" title="Section 74 Juvenile Justice Act, 2015">
-                <div className="role-switcher-pill">
-                  <button
-                    type="button"
-                    className={`role-btn ${appRole === "analyst" ? "active" : ""}`}
-                    onClick={() => { sounds.playClick(); setAppRole("analyst"); }}
-                    title="DANSAF Analyst: Student real names masked to STU-TOKEN-XXXX"
-                  >
-                    <Shield size={12} />
-                    <span>Analyst</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`role-btn ${appRole === "counsellor" ? "active counsellor" : ""}`}
-                    onClick={() => { sounds.playClick(); setAppRole("counsellor"); }}
-                    title="CWC Counsellor: Real identities unmasked for rehabilitation"
-                  >
-                    <HeartHandshake size={12} />
-                    <span>CWC</span>
-                  </button>
-                </div>
+              {/* SECTION 74 JJ ACT ROLE SEGMENT */}
+              <div className="role-segment-pill" title="Section 74 Juvenile Justice Act, 2015">
+                <button
+                  type="button"
+                  className={`role-seg-btn ${appRole === "analyst" ? "active" : ""}`}
+                  onClick={() => { sounds.playClick(); setAppRole("analyst"); }}
+                  title="Analyst Mode: Minor names masked"
+                >
+                  <Shield size={12} />
+                  <span>Analyst</span>
+                </button>
+                <button
+                  type="button"
+                  className={`role-seg-btn ${appRole === "counsellor" ? "active" : ""}`}
+                  onClick={() => { sounds.playClick(); setAppRole("counsellor"); }}
+                  title="CWC Counsellor Mode: Identity unmasked for rehab"
+                >
+                  <HeartHandshake size={12} />
+                  <span>CWC</span>
+                </button>
               </div>
 
-              {/* MALAYALAM / ENGLISH TOGGLE IN TOPBAR */}
+              {/* LANGUAGE TOGGLE */}
               <button
-                className={`btn-topbar-lang ${lang === "ml" ? "ml-active" : ""}`}
+                className={`btn-topbar-lang-toggle ${lang === "ml" ? "ml" : ""}`}
                 onClick={toggleLanguage}
-                title={lang === "en" ? "മലയാളത്തിലേക്ക് മാറ്റുക" : "Switch to English"}
+                title="Switch Language"
               >
-                <Languages size={14} />
-                <span className="topbar-btn-text">{lang === "en" ? "മലയാളം" : "English"}</span>
+                <Languages size={13} />
+                <span>{lang === "en" ? "മലയാളം" : "English"}</span>
               </button>
 
-              {/* KERALA POLICE ACTIVE OFFICER BADGE & QUICK SIGNOUT */}
-              <div className="police-topbar-signed-group">
-                <button
-                  className="btn-police-profile-top"
-                  onClick={() => { sounds.playClick(); setShowLoginModal(true); }}
-                  title="Kerala Cyber Police Officer Pass - Click to view ID"
-                >
-                  <ShieldCheck size={16} className="text-emerald" />
-                  <div className="police-topbar-profile-info">
-                    <span className="police-tag-badge">KP CYBER CELL</span>
-                    <span className="police-officer-title">{policeUser.officerName}</span>
-                  </div>
-                </button>
-
-                <button
-                  className="btn-quick-signout-top"
-                  onClick={() => { sounds.playClick(); handlePoliceSignOut(); }}
-                  title={lang === "ml" ? "പുറത്തുകടക്കുക" : "Sign Out"}
-                >
-                  <LogOut size={13} />
-                </button>
-              </div>
-
-              {/* CLOUD SYNC COMPACT DOT */}
-              <div
-                className="cloud-sync-compact-dot"
-                title={syncStatus.devices > 1 ? `Cloud Sync Active: ${syncStatus.devices} Devices Connected (Phone & PC)` : "Cloud Sync Active: 1 Device Connected"}
+              {/* POLICE OFFICER BADGE */}
+              <button
+                className="btn-officer-pass-top"
+                onClick={() => { sounds.playClick(); setShowLoginModal(true); }}
+                title="Open Kerala Police Duty Pass"
               >
-                <span className={`sync-pulse-dot ${syncStatus.connected ? "connected" : "connecting"}`} />
+                <ShieldCheck size={15} className="text-emerald" />
+                <span className="officer-pass-title">{policeUser?.officerName || "SI Rahul K."}</span>
+                <span className="officer-pass-dot" />
+              </button>
+
+              {/* CLOUD SYNC LIVE DOT */}
+              <div
+                className="cloud-sync-status-indicator"
+                title={syncStatus.devices > 1 ? `Cloud Sync: ${syncStatus.devices} Devices Connected` : "Cloud Sync: Connected"}
+              >
+                <span className={`sync-dot ${syncStatus.connected ? "connected" : "connecting"}`} />
               </div>
             </div>
-                    </header>
+          </header>
 
           {/* FLOATING REAL-TIME CROSS-DEVICE SYNC TOAST */}
           {liveSyncToast && (
             <div className="live-sync-floating-toast">
               <div className="toast-icon-pulse">
-                <Smartphone size={20} className="text-emerald animate-bounce" />
+                <Smartphone size={18} className="text-emerald" />
               </div>
               <div className="toast-text-col">
-                <b>{lang === "ml" ? "📱 ഫോണിൽ നിന്ന് പുതിയ പണമിടപാട് സിങ്ക് ചെയ്തു!" : "📱 Live Payment Synced from Phone!"}</b>
+                <b>{lang === "ml" ? "പുതിയ പണമിടപാട് സിങ്ക് ചെയ്തു!" : "Live Payment Synced!"}</b>
                 <span>
                   {liveSyncToast.sender} ➔ {liveSyncToast.receiver}: <b className="text-emerald">{money(liveSyncToast.amount)}</b>
                 </span>
               </div>
-              <span className="toast-live-tag">● LIVE SYNC</span>
+              <span className="toast-live-tag">LIVE</span>
             </div>
           )}
 
-          {/* SCROLLABLE VIEWPORT CONTENT */}
+          {/* SCROLLABLE VIEWPORT */}
           <div className="official-content-scrollable">
-            {resetToast && (
-              <div className="floating-reset-toast">
-                <div className="toast-content-col">
-                  <div className="toast-main-line">
-                    <RotateCcw size={15} className="toast-icon-spin" />
-                    <b>All transactions have been reset!</b>
-                  </div>
-                  <small>Money trails, transaction ledger, and accounts have been cleared to 0.</small>
-                </div>
-                <div className="toast-actions-row">
-                  <button className="btn-toast-reload" onClick={handleRestoreDemo}>
-                    <Play size={12} />
-                    <span>Reload Demo Data</span>
-                  </button>
-                  <button className="btn-toast-dismiss" onClick={() => setResetToast(false)}>
-                    <X size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {privacy ? (
-              <div className="rehab-banner-notice">
-                <ShieldCheck size={17} />
-                <div>
-                  <b>Section 74 Juvenile Justice Act, 2015 Active (DANSAF Analyst Mode).</b>
-                  <span> Student minor identities are cryptographically masked to <code>STU-TOKEN-XXXX</code> to prevent public disclosure. Switch role to CWC Counsellor to inspect rehabilitation status.</span>
-                </div>
-              </div>
-            ) : (
-              <div className="rehab-banner-notice" style={{ background: "#ecfdf5", borderColor: "#a7f3d0", color: "#065f46" }}>
-                <HeartHandshake size={17} />
-                <div>
-                  <b>CWC / Vimukthi De-Addiction Counsellor Mode Active.</b>
-                  <span> Minor identities and guardian contact details are unmasked strictly for juvenile rehabilitation routing under Section 74 JJ Act.</span>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 1: COMMAND OVERVIEW */}
             {activeTab === "overview" && (
               <div className="overview-page-wrapper">
-                {/* INTERACTIVE VIEWING MODES STRIP */}
-                <div className="scenario-control-strip">
-                  <div className="strip-top-row">
-                    <div className="strip-title-group">
-                      <span className="strip-badge"><Eye size={13} /> TRANSACTION VIEWING MODES</span>
-                      <span className="strip-hint">Select a viewing perspective for your transactions:</span>
-                    </div>
-                    <div className="strip-actions-cluster">
+                {/* SLEEK SEGMENTED PERSPECTIVE BAR & ACTIONS */}
+                <div className="overview-header-toolbar">
+                  <div className="segmented-filter-bar">
+                    {Object.entries(VIEW_MODES).map(([vKey, mode]) => (
                       <button
-                        className="btn-strip-reset"
-                        onClick={handleResetTransactions}
-                        title="Reset all transactions to zero"
+                        key={vKey}
+                        className={`segment-btn ${viewMode === vKey ? "active" : ""}`}
+                        onClick={() => handleSelectViewMode(vKey)}
                       >
-                        <RotateCcw size={13} />
-                        <span>Reset All</span>
+                        <span>{lang === "ml" ? mode.labelMl : mode.label}</span>
                       </button>
-                      <button
-                        className="btn-strip-load-demo"
-                        onClick={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
-                        title="Load practice test transactions"
-                      >
-                        <Sparkles size={13} />
-                        <span>Load Practice Data</span>
-                      </button>
-                      <button
-                        className={`btn-simulation-toggle ${simulating ? "running" : ""}`}
-                        onClick={toggleSimulation}
-                      >
-                        {simulating ? <Pause size={14} /> : <Play size={14} />}
-                        <span>{simulating ? "Pause Walkthrough" : "Watch Money Move"}</span>
-                      </button>
-                    </div>
+                    ))}
                   </div>
 
-                  {transactions.length === 0 ? (
-                    <div className="status-strip-banner clean-slate">
-                      <span className="banner-dot green" />
-                      <span>
-                        <b>System in Clean Slate Mode (0 Active Transactions):</b> No active transactions. Turn on <b>Simulator Tools</b> switch to send a payment, or click <b>Load Practice Data</b>.
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="status-strip-banner active-mode">
-                      <span className="banner-dot blue" />
-                      <span>
-                        <b>Live Money Trails Active:</b> Showing {displayTransactions.length} of {transactions.length} payments ({money(displayTotal)}). Click <b>Reset All</b> anytime to clear.
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="scenario-chips-row">
-                    {Object.entries(VIEW_MODES).map(([vKey, mode]) => {
-                      const isCurrent = viewMode === vKey;
-                      return (
-                        <button
-                          key={vKey}
-                          className={`scenario-chip-card theme-${vKey} ${isCurrent ? "active" : ""}`}
-                          onClick={() => handleSelectViewMode(vKey)}
-                        >
-                          <div className="chip-label-row">
-                            <b>{mode.label}</b>
-                            {isCurrent && <span className="chip-active-dot" />}
-                          </div>
-                          <small className="chip-desc">{mode.desc}</small>
-                        </button>
-                      );
-                    })}
+                  <div className="overview-action-pills">
+                    <button
+                      className={`action-pill-btn ${simulating ? "active-running" : ""}`}
+                      onClick={toggleSimulation}
+                      title="Animate Step-by-Step Trail"
+                    >
+                      {simulating ? <Pause size={13} /> : <Play size={13} />}
+                      <span>{simulating ? "Pause" : "Play Trail"}</span>
+                    </button>
+                    <button
+                      className="action-pill-btn"
+                      onClick={() => handleLoadSampleData(viewMode === "all" ? "burst" : viewMode)}
+                      title="Load Sample Data"
+                    >
+                      <Sparkles size={13} />
+                      <span>Demo</span>
+                    </button>
+                    <button
+                      className="action-pill-btn danger"
+                      onClick={handleResetTransactions}
+                      title="Clear All to 0"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Reset</span>
+                    </button>
                   </div>
-
-                  {/* STEP NARRATION CALLOUT BANNER */}
-                  {currentScriptStep && (
-                    <div className="simulation-narration-banner">
-                      <div className="narration-left">
-                        <span className="narration-step-tag">
-                          STEP {simStepIndex + 1} OF {activeScript.length}
-                        </span>
-                        <span className="narration-text">{currentScriptStep.narration}</span>
-                      </div>
-                      <div className="narration-controls">
-                        <button className="narration-btn" onClick={prevSimStep} disabled={simStepIndex === 0}>
-                          Prev
-                        </button>
-                        <button className="narration-btn primary" onClick={nextSimStep}>
-                          {simStepIndex + 1 >= activeScript.length ? "Restart Step 1" : "Next Step →"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
-                {/* 4 EXECUTIVE KPI STAT CARDS */}
-                <div className="executive-kpi-grid">
-                  <div className="kpi-card blue-theme">
-                    <div className="kpi-top">
-                      <span>{t.kpiTotalMoney}</span>
-                      <div className="kpi-icon-wrap blue"><Banknote size={17} /></div>
+                {/* COMPACT HUD METRIC TILES */}
+                <div className="compact-hud-grid">
+                  <div className="hud-metric-card blue">
+                    <div className="hud-icon-box"><Banknote size={15} /></div>
+                    <div className="hud-text-col">
+                      <span className="hud-metric-label">TOTAL TRACED</span>
+                      <b className="hud-metric-value">{money(trackedUniqueVolume)}</b>
                     </div>
-                    {isAnalyzing ? (
-                      <div className="kpi-skeleton-loader" />
-                    ) : (
-                      <div className="kpi-value">{money(trackedUniqueVolume)}</div>
-                    )}
-                    <div className="kpi-sub">
-                      Across {displayTransactions.length} payments tracked
-                      <span className="kpi-status-tag green">● Live Stream</span>
-                    </div>
+                    <span className="hud-pill-tag green">● {displayTransactions.length} txns</span>
                   </div>
 
-                  <div className="kpi-card red-theme">
-                    <div className="kpi-top">
-                      <span>{t.kpiFakeAccounts}</span>
-                      <div className="kpi-icon-wrap red"><BadgeAlert size={17} /></div>
+                  <div className="hud-metric-card red">
+                    <div className="hud-icon-box"><BadgeAlert size={15} /></div>
+                    <div className="hud-text-col">
+                      <span className="hud-metric-label">FLAGGED MULES</span>
+                      <b className="hud-metric-value text-red">{displayTrace.candidates?.length ?? 0}</b>
                     </div>
-                    {isAnalyzing ? (
-                      <div className="kpi-skeleton-loader red" />
-                    ) : (
-                      <div className="kpi-value text-red">{displayTrace.candidates?.length ?? 0}</div>
-                    )}
-                    <div className="kpi-sub">
-                      Accounts collecting money from multiple people
-                      <span className="kpi-status-tag red">● High Risk</span>
-                    </div>
+                    <span className="hud-pill-tag red">High Risk</span>
                   </div>
 
-                  <div className="kpi-card green-theme">
-                    <div className="kpi-top">
-                      <span>{t.kpiMoneyTrails}</span>
-                      <div className="kpi-icon-wrap green"><GitBranch size={17} /></div>
+                  <div className="hud-metric-card emerald">
+                    <div className="hud-icon-box"><GitBranch size={15} /></div>
+                    <div className="hud-text-col">
+                      <span className="hud-metric-label">ACTIVE TRAILS</span>
+                      <b className="hud-metric-value">{displayTrace.paths?.length ?? 0}</b>
                     </div>
-                    {isAnalyzing ? (
-                      <div className="kpi-skeleton-loader green" />
-                    ) : (
-                      <div className="kpi-value">{displayTrace.paths?.length ?? 0}</div>
-                    )}
-                    <div className="kpi-sub">
-                      Step-by-step payment paths traced
-                      <span className="kpi-status-tag blue">● Traced</span>
-                    </div>
+                    <span className="hud-pill-tag blue">Traced</span>
                   </div>
 
-                  <div className="kpi-card yellow-theme">
-                    <div className="kpi-top">
-                      <span>{t.kpiShopAlerts}</span>
-                      <div className="kpi-icon-wrap yellow"><Store size={17} /></div>
-                    </div>
-                    {isAnalyzing ? (
-                      <div className="kpi-skeleton-loader yellow" />
-                    ) : (
-                      <div className="kpi-value text-yellow">
+                  <div className="hud-metric-card amber">
+                    <div className="hud-icon-box"><Store size={15} /></div>
+                    <div className="hud-text-col">
+                      <span className="hud-metric-label">SHOP CASH SURGE</span>
+                      <b className="hud-metric-value text-amber">
                         {displayTrace.merchant_alerts?.filter((a) => a.status === "unusual-receipts-review").length ?? 0}
-                      </div>
-                    )}
-                    <div className="kpi-sub">
-                      Shops with sudden cash jumps
-                      <span className="kpi-status-tag yellow">● 4x Jump</span>
+                      </b>
                     </div>
+                    <span className="hud-pill-tag amber">4x Surge</span>
                   </div>
                 </div>
+
+                {/* FLOATING STEPPER WHEN SIMULATING */}
+                {currentScriptStep && (
+                  <div className="hud-simulation-stepper animate-fade-in">
+                    <span className="stepper-count-tag">STEP {simStepIndex + 1}/{activeScript.length}</span>
+                    <span className="stepper-text">{currentScriptStep.narration}</span>
+                    <div className="stepper-controls">
+                      <button className="btn-stepper" onClick={prevSimStep} disabled={simStepIndex === 0}>Prev</button>
+                      <button className="btn-stepper primary" onClick={nextSimStep}>
+                        {simStepIndex + 1 >= activeScript.length ? "Restart" : "Next →"}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* OFFICIAL TOPOLOGY GRAPH */}
                 <OfficialTopologyGraph
