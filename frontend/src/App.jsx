@@ -13,6 +13,7 @@ import CashLaunderingDesk from "./CashLaunderingDesk.jsx";
 import LocationAiScanner from "./LocationAiScanner.jsx";
 import PoliceSignInModal from "./PoliceSignInModal.jsx";
 import PoliceGateScreen from "./PoliceGateScreen.jsx";
+import { syncClient } from "./syncClient";
 import { translations, POLICE_DEFAULT_USER } from "./i18n.js";
 
 const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
@@ -1555,6 +1556,10 @@ export default function App() {
   });
   const [showLoginModal, setShowLoginModal] = useState(false);
 
+  // Cross-Device Real-Time Cloud Sync State
+  const [syncStatus, setSyncStatus] = useState({ connected: false, devices: 1 });
+  const [liveSyncToast, setLiveSyncToast] = useState(null);
+
   function handlePoliceSignIn(officer) {
     setPoliceUser(officer);
     try {
@@ -1607,7 +1612,7 @@ export default function App() {
     try {
       localStorage.setItem(BRIDGE_KEY, JSON.stringify(emptyPayload));
       window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: emptyPayload }));
-      await fetch(`${API}/api/reset`, { method: "POST" });
+      await syncClient.sendReset();
     } catch {}
     setTransactions([]);
     setTrace(emptyTrace);
@@ -1633,6 +1638,11 @@ export default function App() {
     };
     localStorage.setItem(BRIDGE_KEY, JSON.stringify(payload));
     window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: payload }));
+
+    // Real-time broadcast to mobile phones, laptops, and all connected devices
+    try {
+      await syncClient.sendTransactions(newTxList, "web");
+    } catch {}
 
     try {
       const response = await fetch(`${API}/api/trace-mule`, {
@@ -1673,6 +1683,12 @@ export default function App() {
     };
     localStorage.setItem(BRIDGE_KEY, JSON.stringify(payload));
     window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: payload }));
+    
+    // Broadcast sample scenario to all connected devices
+    try {
+      await syncClient.sendLoadSample(sKey);
+    } catch {}
+
     await broadcast(records, merchantObs);
     setViewMode(sKey === "candy" ? "candy" : sKey === "direct" ? "direct" : sKey === "cashDeposit" ? "cashDeposit" : "all");
     setResetToast(false);
@@ -1894,9 +1910,108 @@ export default function App() {
     };
     window.addEventListener("storage", handleStorage);
     window.addEventListener("toofan-tx-update", handleCustom);
+
+    // =======================================================================
+    // REAL-TIME CROSS-DEVICE WEBSOCKET CLOUD SYNC INITIALIZATION
+    // =======================================================================
+    syncClient.connect();
+
+    syncClient.fetchInitialState().then((state) => {
+      if (state && Array.isArray(state.transactions)) {
+        if (state.is_reset) {
+          setTransactions([]);
+          setTrace({
+            nodes: [],
+            edges: [],
+            paths: [],
+            candidates: [],
+            merchant_alerts: [],
+            excluded_p2m_count: 0,
+            transaction_count: 0,
+            notice: "All synthetic transactions and paths have been reset.",
+          });
+        } else {
+          setTransactions(state.transactions);
+          if (state.trace) setTrace(state.trace);
+        }
+        if (state.connected_devices !== undefined) {
+          setSyncStatus((prev) => ({ ...prev, devices: state.connected_devices }));
+        }
+      }
+    });
+
+    const unsubscribeSync = syncClient.subscribe((event, data) => {
+      if (event === "SYNC_STATUS") {
+        setSyncStatus({ connected: data.connected, devices: data.devices || 1 });
+      } else if (event === "DEVICE_COUNT") {
+        setSyncStatus((prev) => ({ ...prev, devices: data.connected_devices || 1 }));
+      } else if (event === "TX_UPDATE") {
+        if (data.is_reset) {
+          setTransactions([]);
+          setTrace({
+            nodes: [],
+            edges: [],
+            paths: [],
+            candidates: [],
+            merchant_alerts: [],
+            excluded_p2m_count: 0,
+            transaction_count: 0,
+          });
+          setViewMode("all");
+          return;
+        }
+
+        if (Array.isArray(data.transactions)) {
+          setTransactions(data.transactions);
+          if (data.trace) setTrace(data.trace);
+          setViewMode("all");
+
+          // Visual scanner effect when payment arrives
+          setIsAnalyzing(true);
+          setTimeout(() => setIsAnalyzing(false), 850);
+
+          if (data.new_transactions && data.new_transactions.length > 0) {
+            const firstNew = data.new_transactions[0];
+            sounds.playPaySuccess();
+            setLiveSyncToast({
+              sender: firstNew.sender,
+              receiver: firstNew.receiver,
+              amount: firstNew.amount,
+              source: data.source || "mobile",
+            });
+            setTimeout(() => setLiveSyncToast(null), 5500);
+          }
+        }
+      } else if (event === "RESET") {
+        setTransactions([]);
+        setTrace({
+          nodes: [],
+          edges: [],
+          paths: [],
+          candidates: [],
+          merchant_alerts: [],
+          excluded_p2m_count: 0,
+          transaction_count: 0,
+          notice: "All synthetic transactions and paths have been reset.",
+        });
+        setViewMode("all");
+        setResetToast(true);
+        setTimeout(() => setResetToast(false), 4500);
+      } else if (event === "SAMPLE_LOADED") {
+        if (Array.isArray(data.transactions)) {
+          setTransactions(data.transactions);
+          if (data.trace) setTrace(data.trace);
+          setViewMode("all");
+          setIsAnalyzing(true);
+          setTimeout(() => setIsAnalyzing(false), 650);
+        }
+      }
+    });
+
     return () => {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("toofan-tx-update", handleCustom);
+      unsubscribeSync();
     };
   }, []);
 
@@ -2084,6 +2199,22 @@ export default function App() {
             </div>
 
             <div className="topbar-right-zone">
+              {/* CROSS-DEVICE REAL-TIME CLOUD SYNC PILL */}
+              <div
+                className="cloud-sync-status-pill"
+                title="Cross-Device Cloud Sync: Real-time synchronization active between Phone and PC"
+              >
+                <span className={`sync-pulse-dot ${syncStatus.connected ? "connected" : "connecting"}`} />
+                <div className="sync-pill-text">
+                  <b>{lang === "ml" ? "ക്ലൗഡ് സിങ്ക് സജീവം" : "Cloud Sync Live"}</b>
+                  <small>
+                    {syncStatus.devices > 1
+                      ? (lang === "ml" ? `${syncStatus.devices} ഉപകരണങ്ങൾ (Phone & PC)` : `${syncStatus.devices} Devices Connected (Phone 📱 & PC 💻)`)
+                      : (lang === "ml" ? "1 ഉപകരണം (മൊബൈലിൽ തുറക്കൂ)" : "1 Device (Open on Phone to Sync)")}
+                  </small>
+                </div>
+              </div>
+
               {/* KERALA POLICE ACTIVE OFFICER BADGE & QUICK SIGNOUT */}
               <div className="police-topbar-signed-group">
                 <button
@@ -2185,6 +2316,22 @@ export default function App() {
               </button>
             </div>
           </header>
+
+          {/* FLOATING REAL-TIME CROSS-DEVICE SYNC TOAST */}
+          {liveSyncToast && (
+            <div className="live-sync-floating-toast">
+              <div className="toast-icon-pulse">
+                <Smartphone size={20} className="text-emerald animate-bounce" />
+              </div>
+              <div className="toast-text-col">
+                <b>{lang === "ml" ? "📱 ഫോണിൽ നിന്ന് പുതിയ പണമിടപാട് സിങ്ക് ചെയ്തു!" : "📱 Live Payment Synced from Phone!"}</b>
+                <span>
+                  {liveSyncToast.sender} ➔ {liveSyncToast.receiver}: <b className="text-emerald">{money(liveSyncToast.amount)}</b>
+                </span>
+              </div>
+              <span className="toast-live-tag">● LIVE SYNC</span>
+            </div>
+          )}
 
           {/* SCROLLABLE VIEWPORT CONTENT */}
           <div className="official-content-scrollable">

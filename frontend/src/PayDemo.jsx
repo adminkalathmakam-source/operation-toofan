@@ -6,6 +6,7 @@ import {
   Volume2, VolumeX, Wallet, X, Zap
 } from "lucide-react";
 import { sounds, triggerConfetti } from "./soundEffects";
+import { syncClient } from "./syncClient";
 
 const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
 const BRIDGE_KEY = "toofan-shield-demo-scenario";
@@ -84,6 +85,7 @@ export default function PayDemo({
 
   useEffect(() => {
     sounds.muted = !soundEnabled;
+    syncClient.connect();
   }, [soundEnabled]);
 
   function handleSelectContact(contact) {
@@ -258,6 +260,11 @@ export default function PayDemo({
     await new Promise((r) => setTimeout(r, 450));
     setPayProgressStage("authorizing");
 
+    // Broadcast live over WebSockets to PC and other connected devices
+    try {
+      await syncClient.sendTransactions(generatedTx, "mobile-gpay");
+    } catch {}
+
     if (typeof onAddTransactions === "function") {
       await onAddTransactions(generatedTx, []);
     } else {
@@ -315,6 +322,11 @@ export default function PayDemo({
       usual_daily_receipts: baselineValue,
       observed_daily_receipts: observedValue,
     }];
+
+    // Broadcast cash deposit live over WebSockets to PC and other devices
+    try {
+      await syncClient.sendTransactions(generatedTx, "mobile-cash");
+    } catch {}
 
     if (typeof onAddTransactions === "function") {
       await onAddTransactions(generatedTx, merchantObservations);
@@ -1090,6 +1102,10 @@ export default function PayDemo({
               <div className="receipt-row">
                 <span>UPI Ref ID</span>
                 <code>{lastTxId}</code>
+              </div>
+              <div className="receipt-row">
+                <span>Cloud Multi-Device Sync</span>
+                <span className="live-sync-confirmed">⚡ Synced Live to PC Screen</span>
               </div>
               <div className="receipt-row">
                 <span>Paid From</span>
