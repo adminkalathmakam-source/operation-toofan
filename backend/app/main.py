@@ -124,6 +124,8 @@ def _execute_graph_trace(frame: pd.DataFrame, merchant_observations: list) -> di
     for account in graph.nodes:
         incoming = graph.in_degree(account)
         outgoing = graph.out_degree(account)
+        total_received = sum(graph[u][account]["amount"] for u in graph.predecessors(account))
+        total_sent = sum(graph[account][v]["amount"] for v in graph.successors(account))
         role = (
             "destination"
             if outgoing == 0
@@ -136,6 +138,8 @@ def _execute_graph_trace(frame: pd.DataFrame, merchant_observations: list) -> di
                 "id": account,
                 "incoming": incoming,
                 "outgoing": outgoing,
+                "total_received": round(float(total_received), 2),
+                "total_sent": round(float(total_sent), 2),
                 "role": role,
             }
         )

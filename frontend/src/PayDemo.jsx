@@ -248,13 +248,13 @@ export default function PayDemo({
     const generatedTx = isP2M
       ? [
           { sender: cleanSender, receiver: cleanReceiver, amount: numAmount, channel: "upi", is_p2m: true, reference_id: txId },
-          { sender: cleanReceiver, receiver: "FAKE-ACC-7A", amount: Math.max(0, numAmount * 4), channel: "merchant-settlement", is_p2m: false, reference_id: txId },
-          { sender: "FAKE-ACC-7A", receiver: "CASHOUT-HUB", amount: Math.max(0, numAmount * 4 - 30), channel: "bank-transfer", is_p2m: false, reference_id: txId },
+          { sender: cleanReceiver, receiver: "FAKE-ACC-7A", amount: numAmount, channel: "merchant-settlement", is_p2m: false, reference_id: `${txId}-FWD1` },
+          { sender: "FAKE-ACC-7A", receiver: "CASHOUT-HUB", amount: numAmount, channel: "bank-transfer", is_p2m: false, reference_id: `${txId}-FWD2` },
         ]
       : [
           { sender: cleanSender, receiver: cleanReceiver, amount: numAmount, channel: "upi", is_p2m: false, reference_id: txId },
-          { sender: cleanReceiver, receiver: "FAKE-ACC-8B", amount: Math.max(0, numAmount * 3), channel: "transfer", is_p2m: false, reference_id: txId },
-          { sender: "FAKE-ACC-8B", receiver: "CASHOUT-HUB", amount: Math.max(0, numAmount * 3 - 50), channel: "transfer", is_p2m: false, reference_id: txId },
+          { sender: cleanReceiver, receiver: "FAKE-ACC-8B", amount: numAmount, channel: "transfer", is_p2m: false, reference_id: `${txId}-FWD1` },
+          { sender: "FAKE-ACC-8B", receiver: "CASHOUT-HUB", amount: numAmount, channel: "transfer", is_p2m: false, reference_id: `${txId}-FWD2` },
         ];
 
     await new Promise((r) => setTimeout(r, 450));
@@ -312,8 +312,8 @@ export default function PayDemo({
 
     const generatedTx = [
       { sender: `${cleanMerchant}-CASH-VAULT`, receiver: "COMMERCIAL-BANK-SETTLEMENT", amount: observedValue, channel: "cash-deposit", is_p2m: false, event_type: "cash_deposit", reference_id: txId },
-      { sender: "COMMERCIAL-BANK-SETTLEMENT", receiver: "FAKE-ACC-7A", amount: Math.max(0, observedValue - 40), channel: "merchant-settlement", is_p2m: false, event_type: "settlement", reference_id: txId },
-      { sender: "FAKE-ACC-7A", receiver: "CASHOUT-HUB", amount: Math.max(0, observedValue - 90), channel: "bank-transfer", is_p2m: false, event_type: "transfer", reference_id: txId },
+      { sender: "COMMERCIAL-BANK-SETTLEMENT", receiver: "FAKE-ACC-7A", amount: observedValue, channel: "merchant-settlement", is_p2m: false, event_type: "settlement", reference_id: `${txId}-FWD1` },
+      { sender: "FAKE-ACC-7A", receiver: "CASHOUT-HUB", amount: observedValue, channel: "bank-transfer", is_p2m: false, event_type: "transfer", reference_id: `${txId}-FWD2` },
     ];
 
     const merchantObservations = [{

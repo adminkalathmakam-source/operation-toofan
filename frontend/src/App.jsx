@@ -31,14 +31,14 @@ const initialTransactions = [
 
 const initialTrace = {
   nodes: [
-    { id: "STUDENT-014", incoming: 0, outgoing: 1, role: "account" },
-    { id: "STUDENT-028", incoming: 0, outgoing: 1, role: "account" },
-    { id: "STUDENT-031", incoming: 0, outgoing: 1, role: "account" },
-    { id: "STUDENT-044", incoming: 0, outgoing: 1, role: "account" },
-    { id: "BAKERY-QR-02", incoming: 1, outgoing: 1, role: "account" },
-    { id: "FAKE-ACC-7A", incoming: 3, outgoing: 1, role: "possible-convergence" },
-    { id: "FAKE-ACC-8B", incoming: 1, outgoing: 1, role: "account" },
-    { id: "CASHOUT-HUB", incoming: 2, outgoing: 0, role: "destination" },
+    { id: "STUDENT-014", incoming: 0, outgoing: 1, total_received: 0, total_sent: 35, role: "account" },
+    { id: "STUDENT-028", incoming: 0, outgoing: 1, total_received: 0, total_sent: 950, role: "account" },
+    { id: "STUDENT-031", incoming: 0, outgoing: 1, total_received: 0, total_sent: 1250, role: "account" },
+    { id: "STUDENT-044", incoming: 0, outgoing: 1, total_received: 0, total_sent: 600, role: "account" },
+    { id: "BAKERY-QR-02", incoming: 1, outgoing: 1, total_received: 35, total_sent: 3400, role: "account" },
+    { id: "FAKE-ACC-7A", incoming: 3, outgoing: 1, total_received: 5600, total_sent: 5600, role: "possible-convergence" },
+    { id: "FAKE-ACC-8B", incoming: 1, outgoing: 1, total_received: 600, total_sent: 600, role: "account" },
+    { id: "CASHOUT-HUB", incoming: 2, outgoing: 0, total_received: 6200, total_sent: 0, role: "destination" },
   ],
   edges: [
     { source: "STUDENT-014", target: "BAKERY-QR-02", amount: 35 },
@@ -188,6 +188,23 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
 
   const nodes = trace.nodes ?? [];
   const edges = trace.edges ?? [];
+
+  const nodeMoneyMap = useMemo(() => {
+    const map = new Map();
+    edges.forEach((e) => {
+      const amt = Number(e.amount) || 0;
+      const src = map.get(e.source) || { inAmount: 0, outAmount: 0, inCount: 0, outCount: 0 };
+      src.outAmount += amt;
+      src.outCount += 1;
+      map.set(e.source, src);
+
+      const tgt = map.get(e.target) || { inAmount: 0, outAmount: 0, inCount: 0, outCount: 0 };
+      tgt.inAmount += amt;
+      tgt.inCount += 1;
+      map.set(e.target, tgt);
+    });
+    return map;
+  }, [edges]);
 
   const { positions } = useMemo(() => {
     const incomingMap = new Map();
@@ -640,18 +657,54 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
                   {label.length > 15 ? `${label.slice(0, 13)}…` : label}
                 </text>
 
-                {/* Stats badge pill */}
-                <rect
-                  x={pos.x - 22}
-                  y={pos.y + 49}
-                  width="44"
-                  height="14"
-                  rx="4"
-                  fill={style.badgeBg || "#f1f5f9"}
-                />
-                <text x={pos.x} y={pos.y + 59} textAnchor="middle" className="node-stats-text" fill={style.textFill}>
-                  ↓{node.incoming} ↑{node.outgoing}
-                </text>
+                {/* Stats badge pill showing exact currency amount */}
+                {(() => {
+                  const nodeCalc = nodeMoneyMap.get(node.id) || { inAmount: 0, outAmount: 0, inCount: 0, outCount: 0 };
+                  const totalReceived = node.total_received !== undefined ? node.total_received : nodeCalc.inAmount;
+                  const totalSent = node.total_sent !== undefined ? node.total_sent : nodeCalc.outAmount;
+                  const inCount = node.incoming !== undefined ? node.incoming : nodeCalc.inCount;
+                  const outCount = node.outgoing !== undefined ? node.outgoing : nodeCalc.outCount;
+
+                  let badgeText = "";
+                  if (outCount === 0 && inCount > 0) {
+                    badgeText = `Recv ${money(totalReceived)}`;
+                  } else if (inCount === 0 && outCount > 0) {
+                    badgeText = `Sent ${money(totalSent)}`;
+                  } else if (totalReceived > 0 && totalSent > 0) {
+                    if (totalReceived === totalSent) {
+                      badgeText = `Vol ${money(totalSent)}`;
+                    } else {
+                      badgeText = `↓${money(totalReceived)} ↑${money(totalSent)}`;
+                    }
+                  } else if (totalReceived > 0) {
+                    badgeText = `Recv ${money(totalReceived)}`;
+                  } else if (totalSent > 0) {
+                    badgeText = `Sent ${money(totalSent)}`;
+                  } else {
+                    badgeText = money(0);
+                  }
+
+                  const pillWidth = Math.max(54, Math.min(115, badgeText.length * 6.5 + 16));
+
+                  return (
+                    <>
+                      <rect
+                        x={pos.x - pillWidth / 2}
+                        y={pos.y + 49}
+                        width={pillWidth}
+                        height="15"
+                        rx="4"
+                        fill={style.badgeBg || "#f1f5f9"}
+                        stroke={style.stroke}
+                        strokeWidth="0.6"
+                        strokeOpacity="0.4"
+                      />
+                      <text x={pos.x} y={pos.y + 60} textAnchor="middle" className="node-stats-text" fill={style.textFill}>
+                        {badgeText}
+                      </text>
+                    </>
+                  );
+                })()}
               </g>
             );
           })}
@@ -1782,49 +1835,52 @@ export default function App() {
         notice: "All synthetic transactions and paths have been reset to zero.",
       };
     }
-    if (viewMode === "all" || !viewMode) return trace;
+
+    let activeEdges = trace.edges || [];
+    let activeNodes = trace.nodes || [];
+    let activePaths = trace.paths || [];
 
     if (viewMode === "direct") {
-      const activeEdges = (trace.edges || []).filter((e) => !e.is_p2m && !e.source.includes("BAKERY") && !e.source.includes("MERCHANT"));
+      activeEdges = (trace.edges || []).filter((e) => !e.is_p2m && !e.source.includes("BAKERY") && !e.source.includes("MERCHANT"));
       const nodeIds = new Set();
       activeEdges.forEach((e) => { nodeIds.add(e.source); nodeIds.add(e.target); });
-      const activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
-      const activePaths = (trace.paths || []).filter((p) => !p.some((id) => id.includes("BAKERY") || id.includes("MERCHANT")));
-      return {
-        ...trace,
-        nodes: activeNodes,
-        edges: activeEdges,
-        paths: activePaths,
-        transaction_count: activeEdges.length,
-      };
-    }
-    if (viewMode === "candy") {
-      const activeEdges = (trace.edges || []).filter((e) => e.source.includes("BAKERY") || e.target.includes("BAKERY") || e.source.includes("MERCHANT") || e.target.includes("MERCHANT") || e.channel?.includes("settle") || e.is_p2m);
+      activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
+      activePaths = (trace.paths || []).filter((p) => !p.some((id) => id.includes("BAKERY") || id.includes("MERCHANT")));
+    } else if (viewMode === "candy") {
+      activeEdges = (trace.edges || []).filter((e) => e.source.includes("BAKERY") || e.target.includes("BAKERY") || e.source.includes("MERCHANT") || e.target.includes("MERCHANT") || e.channel?.includes("settle") || e.is_p2m);
       const nodeIds = new Set();
       activeEdges.forEach((e) => { nodeIds.add(e.source); nodeIds.add(e.target); });
-      const activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
-      const activePaths = (trace.paths || []).filter((p) => p.some((id) => id.includes("BAKERY") || id.includes("MERCHANT")));
-      return {
-        ...trace,
-        nodes: activeNodes,
-        edges: activeEdges,
-        paths: activePaths,
-        transaction_count: activeEdges.length,
-      };
-    }
-    if (viewMode === "cashDeposit") {
-      const activeEdges = (trace.edges || []).filter((e) => (e.amount || 0) >= 1500 || e.channel?.includes("cash"));
+      activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
+      activePaths = (trace.paths || []).filter((p) => p.some((id) => id.includes("BAKERY") || id.includes("MERCHANT")));
+    } else if (viewMode === "cashDeposit") {
+      activeEdges = (trace.edges || []).filter((e) => (e.amount || 0) >= 1500 || e.channel?.includes("cash"));
       const nodeIds = new Set();
       activeEdges.forEach((e) => { nodeIds.add(e.source); nodeIds.add(e.target); });
-      const activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
-      return {
-        ...trace,
-        nodes: activeNodes,
-        edges: activeEdges,
-        transaction_count: activeEdges.length,
-      };
+      activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
     }
-    return trace;
+
+    // Accurately compute exact money received & sent for each node from the active edges
+    const enrichedNodes = activeNodes.map((node) => {
+      const inAmt = activeEdges.filter((e) => e.target === node.id).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+      const outAmt = activeEdges.filter((e) => e.source === node.id).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+      const inCount = activeEdges.filter((e) => e.target === node.id).length;
+      const outCount = activeEdges.filter((e) => e.source === node.id).length;
+      return {
+        ...node,
+        total_received: inAmt,
+        total_sent: outAmt,
+        incoming: inCount,
+        outgoing: outCount,
+      };
+    });
+
+    return {
+      ...trace,
+      nodes: enrichedNodes,
+      edges: activeEdges,
+      paths: activePaths,
+      transaction_count: activeEdges.length,
+    };
   }, [trace, viewMode]);
 
   const total = transactions.reduce((sum, tx) => sum + tx.amount, 0);
@@ -2566,21 +2622,27 @@ export default function App() {
 
                     <div className="dossier-stats-grid">
                       <div className="dossier-stat-item">
-                        <span>Money Received (In):</span>
-                        <b>{selectedNode.incoming} payments</b>
+                        <span>{t.dossierReceived || "Money Received (In):"}</span>
+                        <b className="text-emerald-700">
+                          {money(selectedNode.total_received ?? (displayTrace.edges?.filter(e => e.target === selectedNode.id).reduce((s, e) => s + (Number(e.amount) || 0), 0) || 0))}
+                          {" "}<span style={{ fontSize: "0.85em", fontWeight: "normal", color: "#64748b" }}>({selectedNode.incoming || 0} {(selectedNode.incoming || 0) === 1 ? (t.dossierPaymentCountSingle || "payment") : (t.dossierPaymentsCount || "payments")})</span>
+                        </b>
                       </div>
                       <div className="dossier-stat-item">
-                        <span>Money Sent Forward (Out):</span>
-                        <b>{selectedNode.outgoing} payments</b>
+                        <span>{t.dossierSent || "Money Sent Forward (Out):"}</span>
+                        <b className="text-blue-700">
+                          {money(selectedNode.total_sent ?? (displayTrace.edges?.filter(e => e.source === selectedNode.id).reduce((s, e) => s + (Number(e.amount) || 0), 0) || 0))}
+                          {" "}<span style={{ fontSize: "0.85em", fontWeight: "normal", color: "#64748b" }}>({selectedNode.outgoing || 0} {(selectedNode.outgoing || 0) === 1 ? (t.dossierPaymentCountSingle || "payment") : (t.dossierPaymentsCount || "payments")})</span>
+                        </b>
                       </div>
                       <div className="dossier-stat-item">
-                        <span>Account Risk Type:</span>
+                        <span>{t.dossierRiskType || "Account Risk Type:"}</span>
                         <b>
                           {selectedNode.incoming >= 2 || selectedNode.id.includes("FAKE-ACC") || selectedNode.id.includes("MULE")
-                            ? "⚠️ High Risk: Fake Account secretly collecting money from multiple people (Mule)"
+                            ? (t.dossierHighRisk || "⚠️ High Risk: Fake Account secretly collecting money from multiple people (Mule)")
                             : selectedNode.outgoing === 0 || selectedNode.id.includes("CASHOUT") || selectedNode.id.includes("HUB")
-                            ? "🏛️ Final Destination: Cashout account where collected funds land"
-                            : "👤 Normal Account: Ordinary sender or shop"}
+                            ? (t.dossierDestination || "🏛️ Final Destination: Cashout account where collected funds land")
+                            : (t.dossierNormal || "👤 Normal Account: Ordinary sender or shop")}
                         </b>
                       </div>
                     </div>

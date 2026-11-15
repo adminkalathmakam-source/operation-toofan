@@ -79,6 +79,17 @@ export const translations = {
     authSuccess: "Officer Authentication Successful! Session activated.",
     invalidCreds: "Invalid credentials. Please use the demo credentials.",
 
+    // Dossier
+    dossierTitle: "Account Dossier & Money Volume",
+    dossierReceived: "Money Received (In):",
+    dossierSent: "Money Sent Forward (Out):",
+    dossierRiskType: "Account Risk Type:",
+    dossierHighRisk: "⚠️ High Risk: Fake Account secretly collecting money from multiple people (Mule)",
+    dossierDestination: "🏛️ Final Destination: Cashout account where collected funds land",
+    dossierNormal: "👤 Normal Account: Ordinary sender or shop",
+    dossierPaymentsCount: "payments",
+    dossierPaymentCountSingle: "payment",
+
     // Language toggle
     langToggle: "മലയാളം",
   },
@@ -160,6 +171,17 @@ export const translations = {
     demoCredentialsHint: "ഡെമോ ലോഗിൻ: യൂസർനെയിം: cyberpolice | പാസ്‌വേഡ്: toofan2026",
     authSuccess: "പോലീസ് ഓഫീസർ ലോഗിൻ വിജയകരം! സെഷൻ സജീവമായി.",
     invalidCreds: "തെറ്റായ യൂസർനെയിം അല്ലെങ്കിൽ പാസ്‌വേഡ്. ഡെമോ വിവരങ്ങൾ ഉപയോഗിക്കുക.",
+
+    // Dossier
+    dossierTitle: "അക്കൗണ്ട് വിവരങ്ങളും പണമൊഴുക്കും",
+    dossierReceived: "ലഭിച്ച തുക (In):",
+    dossierSent: "കൈമാറിയ തുക (Out):",
+    dossierRiskType: "അക്കൗണ്ട് റിസ്ക് തരം:",
+    dossierHighRisk: "⚠️ ഉയർന്ന റിസ്ക്: പലരിൽ നിന്നും പണം ശേഖരിക്കുന്ന വ്യാജ അക്കൗണ്ട് (മ്യൂൾ)",
+    dossierDestination: "🏛️ അന്തിമ ലക്ഷ്യം: ശേഖരിച്ച പണം അവസാനമായി എത്തുന്ന ക്യാഷ്ഔട്ട് കേന്ദ്രം",
+    dossierNormal: "👤 സാധാരണ അക്കൗണ്ട്: അയച്ചയാളോ കടയോ",
+    dossierPaymentsCount: "ഇടപാടുകൾ",
+    dossierPaymentCountSingle: "ഇടപാട്",
 
     // Language toggle
     langToggle: "English",
