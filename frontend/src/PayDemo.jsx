@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   ArrowRight, BadgeAlert, Banknote, Check, CheckCircle2, ChevronRight,
-  CircleHelp, Copy, Gift, GitBranch, Info, Lock, MapPin, Mic, QrCode, RefreshCw, RotateCcw,
+  CircleHelp, Coins, Copy, Gift, GitBranch, Info, Lock, MapPin, Mic, QrCode, RefreshCw, RotateCcw,
   Search, Shield, ShieldCheck, Smartphone, Sparkles, Store, Tag,
   Volume2, VolumeX, Wallet, X, Zap
 } from "lucide-react";
@@ -31,8 +31,9 @@ const RECENT_CONTACTS = [
 const PRESETS = [
   { id: "candy", label: "🍬 Candy Shop (₹35)", desc: "Pre-fill: Student pays ₹35 at Bakery -> money forwarded to Fake Acc" },
   { id: "direct", label: "⚡ Split Transfer (₹700)", desc: "Pre-fill: Student transfer of ₹700 to Fake Acc 7A" },
+  { id: "cashPool", label: "💵 Cash Stash (₹2,000)", desc: "Students give ₹250 cash -> Provider saves until ₹2,000 -> drops at Bakery -> Alt Acc -> Hub" },
   { id: "burst", label: "🌐 Send 7 Test Payments", desc: "Simulate 7 test payments through fake accounts to final hub" },
-  { id: "cash", label: "💵 Shop Cash Desk (₹900)", desc: "Open Shop Cash Counter desk" },
+  { id: "cash", label: "🏪 Shop Cash Desk (₹900)", desc: "Open Shop Cash Counter desk" },
 ];
 
 export default function PayDemo({
@@ -111,6 +112,8 @@ export default function PayDemo({
       setAmount("700");
       setNote("Money transfer");
       setShowPaySheet(true);
+    } else if (p.id === "cashPool") {
+      executeCashPool();
     } else if (p.id === "burst") {
       executeBurst();
     } else if (p.id === "cash") {
@@ -154,6 +157,111 @@ export default function PayDemo({
     }
     setStatus("✨ All transactions have been reset to zero.");
     setTimeout(() => setStatus(""), 4000);
+  }
+
+  async function executeCashPool() {
+    setBusy(true);
+    setStatus("");
+    sounds.playCashRegister();
+    if (typeof sounds.speakAnnouncement === "function") {
+      sounds.speakAnnouncement("Rupees 2000 pooled student cash deposited at bakery counter", "en-IN");
+    }
+
+    const cleanProvider = "PROVIDER-HARSH";
+    const cleanShop = "FORT-ROAD-BAKERY";
+    const cleanAltAcc = "ALT-ACC-7A";
+    const cleanMainAcc = "MAIN-CASHOUT-HUB";
+    const now = Date.now();
+
+    const studentList = [
+      { student: "STUDENT-014", amount: 250, note: "Student cash fee handover (₹250)" },
+      { student: "STUDENT-028", amount: 500, note: "Student cash fee handover (₹500)" },
+      { student: "STUDENT-031", amount: 750, note: "Student cash pool handover (₹750)" },
+      { student: "STUDENT-044", amount: 500, note: "Student cash fee handover (₹500)" },
+    ];
+
+    const studentTxs = studentList.map((item, idx) => ({
+      sender: item.student,
+      receiver: cleanProvider,
+      amount: item.amount,
+      channel: "physical-cash",
+      is_p2m: false,
+      reference_id: `CASH-STU-${now + idx}`,
+      event_type: "student-cash-deposit",
+    }));
+
+    const providerToShopTx = {
+      sender: cleanProvider,
+      receiver: cleanShop,
+      amount: 2000,
+      channel: "shop-counter-cash",
+      is_p2m: false,
+      reference_id: `COUNTER-DEP-${now + 10}`,
+      event_type: "counter-deposit",
+    };
+
+    const shopToAltTx = {
+      sender: cleanShop,
+      receiver: cleanAltAcc,
+      amount: 2000,
+      channel: "merchant-settlement",
+      is_p2m: false,
+      reference_id: `UPI-ONLINE-${now + 11}`,
+      event_type: "online-settlement",
+    };
+
+    const altToMainTx = {
+      sender: cleanAltAcc,
+      receiver: cleanMainAcc,
+      amount: 2000,
+      channel: "bank-transfer",
+      is_p2m: false,
+      reference_id: `FWD-MAIN-${now + 12}`,
+      event_type: "mule-forwarding",
+    };
+
+    const combinedTxs = [...studentTxs, providerToShopTx, shopToAltTx, altToMainTx];
+
+    const merchantObs = [
+      {
+        merchant_alias: cleanShop,
+        category: "Bakery & Sweets",
+        usual_daily_receipts: 200,
+        observed_daily_receipts: 2200,
+      },
+    ];
+
+    try {
+      await syncClient.sendTransactions(combinedTxs, "mobile-gpay-cashpool");
+    } catch {}
+
+    if (typeof onAddTransactions === "function") {
+      await onAddTransactions(combinedTxs, merchantObs);
+    } else {
+      try {
+        const raw = localStorage.getItem(BRIDGE_KEY);
+        const stored = JSON.parse(raw ?? "{}");
+        const existing = Array.isArray(stored.transactions) ? stored.transactions : [];
+        const combined = [...combinedTxs, ...existing];
+        const res = await fetch(`${API}/api/trace-mule`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transactions: combined, merchant_observations: merchantObs }),
+        });
+        const trace = res.ok ? await res.json() : null;
+        localStorage.setItem(BRIDGE_KEY, JSON.stringify({
+          createdAt: new Date().toISOString(),
+          transactions: combined,
+          merchantObservations: merchantObs,
+          trace,
+          isReset: false,
+        }));
+        window.dispatchEvent(new CustomEvent("toofan-tx-update", { detail: { transactions: combined, trace } }));
+      } catch {}
+    }
+
+    setStatus("💵 Physical cash mechanism: Students ₹250+ handed over -> Provider saved ₹2,000 -> Deposited at Bakery counter -> Alt Acc -> Hub!");
+    setBusy(false);
   }
 
   async function executeBurst() {
@@ -555,6 +663,20 @@ export default function PayDemo({
                 </div>
                 <b>Bank transfer</b>
                 <small>Account + IFSC</small>
+              </button>
+
+              <button className="gpay-tile-btn gpay-tile-cashpool" onClick={() => {
+                if (typeof onNavigateTab === "function") {
+                  onNavigateTab("cash");
+                } else {
+                  executeCashPool();
+                }
+              }} title="Physical Cash Transfer: Students (₹250) -> Provider Stash (₹2,000) -> Bakery -> Alt Acc -> Hub">
+                <div className="tile-icon-circle amber" style={{ background: "#fef3c7", color: "#d97706" }}>
+                  <Coins size={24} />
+                </div>
+                <b>Cash to Shop</b>
+                <small>Pool ₹2,000 → Hub</small>
               </button>
             </section>
 

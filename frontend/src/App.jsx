@@ -119,6 +119,24 @@ const SCENARIOS = {
       observed_daily_receipts: 1850,
     }],
   },
+  cashLaundering: {
+    label: "💵 Cash Stash & Bakery Counter (₹2,000)",
+    records: [
+      { sender: "STUDENT-014", receiver: "PROVIDER-HARSH", amount: 250, channel: "physical-cash", is_p2m: false, reference_id: "DEMO-CSH-01" },
+      { sender: "STUDENT-028", receiver: "PROVIDER-HARSH", amount: 500, channel: "physical-cash", is_p2m: false, reference_id: "DEMO-CSH-02" },
+      { sender: "STUDENT-031", receiver: "PROVIDER-HARSH", amount: 750, channel: "physical-cash", is_p2m: false, reference_id: "DEMO-CSH-03" },
+      { sender: "STUDENT-044", receiver: "PROVIDER-HARSH", amount: 500, channel: "physical-cash", is_p2m: false, reference_id: "DEMO-CSH-04" },
+      { sender: "PROVIDER-HARSH", receiver: "FORT-ROAD-BAKERY", amount: 2000, channel: "shop-counter-cash", is_p2m: false, reference_id: "DEMO-CSH-05" },
+      { sender: "FORT-ROAD-BAKERY", receiver: "ALT-ACC-7A", amount: 2000, channel: "merchant-settlement", is_p2m: false, reference_id: "DEMO-CSH-06" },
+      { sender: "ALT-ACC-7A", receiver: "MAIN-CASHOUT-HUB", amount: 2000, channel: "bank-transfer", is_p2m: false, reference_id: "DEMO-CSH-07" },
+    ],
+    merchant: [{
+      merchant_alias: "FORT-ROAD-BAKERY",
+      category: "Bakery & Sweets",
+      usual_daily_receipts: 200,
+      observed_daily_receipts: 2200,
+    }],
+  },
 };
 
 const VIEW_MODES = {
@@ -141,6 +159,11 @@ const VIEW_MODES = {
     label: "💵 Suspicious Cash Spikes",
     desc: "High-value cash jumps and abnormal shop deposits",
     badge: "CASH ALERTS",
+  },
+  cashLaundering: {
+    label: "💵 Cash Stash & Bakery Counter",
+    desc: "Provider pools student cash (₹2,000) → Bakery counter → Alt Acc → Hub",
+    badge: "CASH LAUNDERING",
   },
 };
 
@@ -168,6 +191,14 @@ const SIMULATION_SCRIPTS = {
     { edgeId: "BAKERY-VAULT-01->BANK-SETTLEMENT", narration: "Step 1 of 3: Shop deposits ₹1,850 cash into bank (abnormal 4x jump!).", sound: "click" },
     { edgeId: "BANK-SETTLEMENT->FAKE-ACC-7A", narration: "Step 2 of 3: Bank settlement releases ₹1,800 to Fake Acc 7A.", sound: "alert" },
     { edgeId: "FAKE-ACC-7A->CASHOUT-HUB", narration: "Step 3 of 3: Fake Acc 7A dumps ₹1,750 into the Final Cashout Hub.", sound: "success" },
+  ],
+  cashLaundering: [
+    { edgeId: "STUDENT-014->PROVIDER-HARSH", narration: "Step 1 of 6: Student-014 hands over ₹250 cash to Provider.", sound: "click" },
+    { edgeId: "STUDENT-028->PROVIDER-HARSH", narration: "Step 2 of 6: Student-028 hands over ₹500 cash to Provider.", sound: "click" },
+    { edgeId: "STUDENT-031->PROVIDER-HARSH", narration: "Step 3 of 6: Student-031 hands over ₹750 cash (provider saves until ₹2,000 stash).", sound: "alert" },
+    { edgeId: "PROVIDER-HARSH->FORT-ROAD-BAKERY", narration: "Step 4 of 6: Provider drops ₹2,000 pooled cash at Fort Road Bakery counter.", sound: "alert" },
+    { edgeId: "FORT-ROAD-BAKERY->ALT-ACC-7A", narration: "Step 5 of 6: Bakery deposits cash & sends ₹2,000 UPI online transfer to Alt Account.", sound: "alert" },
+    { edgeId: "ALT-ACC-7A->MAIN-CASHOUT-HUB", narration: "Step 6 of 6: Alt Account forwards all ₹2,000 into the Final Cashout Hub.", sound: "success" },
   ],
 };
 
@@ -206,7 +237,7 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
     return map;
   }, [edges]);
 
-  const { positions } = useMemo(() => {
+  const { positions, hasProvider } = useMemo(() => {
     const incomingMap = new Map();
     const outgoingMap = new Map();
 
@@ -215,6 +246,56 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
       outgoingMap.set(e.source, (outgoingMap.get(e.source) || 0) + 1);
     });
 
+    const hasProvider = nodes.some((n) => n.id.includes("PROVIDER") || n.id.includes("HANDLER") || n.id.includes("AGENT"));
+
+    if (hasProvider) {
+      // 5-Tier layout: Students -> Provider -> Shop/Bakery -> Fake Acc / Mule -> Hub
+      const tier0 = []; // Students (inCount === 0)
+      const tier1 = []; // Provider / Handler
+      const tier2 = []; // Shop / Bakery / Merchant
+      const tier3 = []; // Mule / Alt Acc / Fake Acc
+      const tier4 = []; // Destination Hub (outCount === 0)
+
+      nodes.forEach((node) => {
+        const inCount = incomingMap.get(node.id) || 0;
+        const outCount = outgoingMap.get(node.id) || 0;
+        const isProv = node.id.includes("PROVIDER") || node.id.includes("HANDLER") || node.id.includes("AGENT");
+        const isShop = node.id.includes("BAKERY") || node.id.includes("SHOP") || node.id.includes("CANTEEN") || node.id.includes("MERCHANT");
+        const isDest = node.role === "destination" || (outCount === 0 && inCount > 0) || node.id.includes("HUB") || node.id.includes("CASHOUT");
+
+        if (isProv) {
+          tier1.push(node);
+        } else if (isDest) {
+          tier4.push(node);
+        } else if (isShop) {
+          tier2.push(node);
+        } else if (inCount === 0) {
+          tier0.push(node);
+        } else {
+          tier3.push(node);
+        }
+      });
+
+      const groups = [tier0, tier1, tier2, tier3, tier4];
+      const pos = new Map();
+      const svgHeight = 310;
+      const tierX = [75, 235, 395, 560, 730];
+
+      groups.forEach((group, tIndex) => {
+        const x = tierX[tIndex];
+        const count = group.length;
+        group.forEach((node, nIndex) => {
+          const y = count === 1
+            ? svgHeight / 2
+            : 45 + ((svgHeight - 90) / (count - 1 || 1)) * nIndex;
+          pos.set(node.id, { x, y, tier: tIndex });
+        });
+      });
+
+      return { positions: pos, hasProvider: true };
+    }
+
+    // Standard 4-Tier layout
     const tier0 = []; // Origins
     const tier1 = []; // Gateways / Merchants
     const tier2 = []; // Convergence Mules
@@ -251,7 +332,7 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
       });
     });
 
-    return { positions: pos };
+    return { positions: pos, hasProvider: false };
   }, [nodes, edges]);
 
   const filteredEdges = useMemo(() => {
@@ -259,20 +340,18 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
   }, [edges, minAmount]);
 
   function getNodeStyle(node) {
-    const isFakeAcc = node.role === "possible-convergence" || node.incoming >= 2 || node.id.includes("FAKE-ACC") || node.id.includes("MULE");
-    const isDestination = node.role === "destination" || node.outgoing === 0 || node.id.includes("HUB") || node.id.includes("CASHOUT");
-    const isMerchant = node.id.includes("BAKERY") || node.id.includes("MERCHANT") || node.id.includes("SETTLE") || node.id.includes("CANTEEN");
-
-    if (isFakeAcc) {
+    const isProvider = node.id.includes("PROVIDER") || node.id.includes("HANDLER") || node.id.includes("AGENT");
+    if (isProvider) {
       return {
-        fill: "url(#fakeAccGrad)",
-        stroke: "#ef4444",
-        glow: "url(#glowRed)",
-        textFill: "#dc2626",
-        badgeBg: "#fee2e2",
-        icon: "⚠️",
+        fill: "url(#providerGrad)",
+        stroke: "#f59e0b",
+        glow: "url(#glowAmber)",
+        textFill: "#d97706",
+        badgeBg: "#fef3c7",
+        icon: "🎒",
       };
     }
+    const isDestination = node.role === "destination" || node.outgoing === 0 || node.id.includes("HUB") || node.id.includes("CASHOUT");
     if (isDestination) {
       return {
         fill: "url(#hubGrad)",
@@ -283,6 +362,7 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
         icon: "🏛️",
       };
     }
+    const isMerchant = node.id.includes("BAKERY") || node.id.includes("MERCHANT") || node.id.includes("SETTLE") || node.id.includes("CANTEEN") || node.id.includes("SHOP");
     if (isMerchant) {
       return {
         fill: "url(#shopGrad)",
@@ -293,15 +373,15 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
         icon: "🏪",
       };
     }
-    const isProvider = node.id.includes("PROVIDER") || node.id.includes("HANDLER") || node.id.includes("AGENT");
-    if (isProvider) {
+    const isFakeAcc = node.role === "possible-convergence" || node.incoming >= 2 || node.id.includes("FAKE-ACC") || node.id.includes("MULE") || node.id.includes("ALT-ACC");
+    if (isFakeAcc) {
       return {
-        fill: "url(#providerGrad)",
-        stroke: "#f59e0b",
-        glow: "url(#glowAmber)",
-        textFill: "#d97706",
-        badgeBg: "#fef3c7",
-        icon: "🎒",
+        fill: "url(#fakeAccGrad)",
+        stroke: "#ef4444",
+        glow: "url(#glowRed)",
+        textFill: "#dc2626",
+        badgeBg: "#fee2e2",
+        icon: "⚠️",
       };
     }
     return {
@@ -367,10 +447,22 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
           </div>
         )}
         <div className="tier-stage-labels">
-          <span className="tier-badge-label blue"><span className="tier-dot blue" /> STEP 1 · STUDENTS</span>
-          <span className="tier-badge-label green"><span className="tier-dot green" /> STEP 2 · SHOPS &amp; QR</span>
-          <span className="tier-badge-label red"><span className="tier-dot red" /> STEP 3 · FAKE ACCS (MULES)</span>
-          <span className="tier-badge-label purple"><span className="tier-dot purple" /> STEP 4 · FINAL CASHOUT HUB</span>
+          {hasProvider ? (
+            <>
+              <span className="tier-badge-label blue"><span className="tier-dot blue" /> STEP 1 · STUDENTS</span>
+              <span className="tier-badge-label amber" style={{ background: "#fef3c7", color: "#b45309", borderColor: "#fde68a" }}><span className="tier-dot amber" style={{ background: "#f59e0b" }} /> STEP 2 · PROVIDER / CASH POOL</span>
+              <span className="tier-badge-label green"><span className="tier-dot green" /> STEP 3 · SHOPS &amp; QR</span>
+              <span className="tier-badge-label red"><span className="tier-dot red" /> STEP 4 · ALT ACCS (MULES)</span>
+              <span className="tier-badge-label purple"><span className="tier-dot purple" /> STEP 5 · CASHOUT HUB</span>
+            </>
+          ) : (
+            <>
+              <span className="tier-badge-label blue"><span className="tier-dot blue" /> STEP 1 · STUDENTS</span>
+              <span className="tier-badge-label green"><span className="tier-dot green" /> STEP 2 · SHOPS &amp; QR</span>
+              <span className="tier-badge-label red"><span className="tier-dot red" /> STEP 3 · FAKE ACCS (MULES)</span>
+              <span className="tier-badge-label purple"><span className="tier-dot purple" /> STEP 4 · FINAL CASHOUT HUB</span>
+            </>
+          )}
         </div>
 
         <div className="mobile-map-pan-hint">
@@ -452,6 +544,10 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
               <stop offset="0%" stopColor="rgba(139, 92, 246, 0.09)" />
               <stop offset="100%" stopColor="rgba(139, 92, 246, 0.02)" />
             </linearGradient>
+            <linearGradient id="tierColProvider" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="rgba(245, 158, 11, 0.09)" />
+              <stop offset="100%" stopColor="rgba(245, 158, 11, 0.02)" />
+            </linearGradient>
 
             {/* Glowing Drop Shadows */}
             <filter id="glowGreen" x="-20%" y="-20%" width="140%" height="140%">
@@ -480,10 +576,22 @@ function OfficialTopologyGraph({ trace, privacy, onSelectNode, selectedNode, act
           </defs>
 
           {/* TIER ZONE GLASS PANELS */}
-          <rect x="25" y="10" width="165" height="290" rx="14" fill="url(#tierColStudent)" stroke="rgba(56, 189, 248, 0.18)" strokeWidth="1" />
-          <rect x="235" y="10" width="165" height="290" rx="14" fill="url(#tierColShop)" stroke="rgba(16, 185, 129, 0.18)" strokeWidth="1" />
-          <rect x="445" y="10" width="165" height="290" rx="14" fill="url(#tierColFakeAcc)" stroke="rgba(239, 68, 68, 0.18)" strokeWidth="1" />
-          <rect x="655" y="10" width="150" height="290" rx="14" fill="url(#tierColHub)" stroke="rgba(139, 92, 246, 0.18)" strokeWidth="1" />
+          {hasProvider ? (
+            <>
+              <rect x="15" y="10" width="135" height="290" rx="12" fill="url(#tierColStudent)" stroke="rgba(56, 189, 248, 0.18)" strokeWidth="1" />
+              <rect x="170" y="10" width="135" height="290" rx="12" fill="url(#tierColProvider)" stroke="rgba(245, 158, 11, 0.18)" strokeWidth="1" />
+              <rect x="325" y="10" width="145" height="290" rx="12" fill="url(#tierColShop)" stroke="rgba(16, 185, 129, 0.18)" strokeWidth="1" />
+              <rect x="490" y="10" width="145" height="290" rx="12" fill="url(#tierColFakeAcc)" stroke="rgba(239, 68, 68, 0.18)" strokeWidth="1" />
+              <rect x="655" y="10" width="155" height="290" rx="12" fill="url(#tierColHub)" stroke="rgba(139, 92, 246, 0.18)" strokeWidth="1" />
+            </>
+          ) : (
+            <>
+              <rect x="25" y="10" width="165" height="290" rx="14" fill="url(#tierColStudent)" stroke="rgba(56, 189, 248, 0.18)" strokeWidth="1" />
+              <rect x="235" y="10" width="165" height="290" rx="14" fill="url(#tierColShop)" stroke="rgba(16, 185, 129, 0.18)" strokeWidth="1" />
+              <rect x="445" y="10" width="165" height="290" rx="14" fill="url(#tierColFakeAcc)" stroke="rgba(239, 68, 68, 0.18)" strokeWidth="1" />
+              <rect x="655" y="10" width="150" height="290" rx="14" fill="url(#tierColHub)" stroke="rgba(139, 92, 246, 0.18)" strokeWidth="1" />
+            </>
+          )}
 
           {/* CURVED BEZIER EDGES */}
           {filteredEdges.map((edge, idx) => {
@@ -1743,7 +1851,7 @@ export default function App() {
     } catch {}
 
     await broadcast(records, merchantObs);
-    setViewMode(sKey === "candy" ? "candy" : sKey === "direct" ? "direct" : sKey === "cashDeposit" ? "cashDeposit" : "all");
+    setViewMode(sKey === "candy" ? "candy" : sKey === "direct" ? "direct" : sKey === "cashDeposit" ? "cashDeposit" : sKey === "cashLaundering" ? "cashLaundering" : "all");
     setResetToast(false);
     setTimeout(() => setIsAnalyzing(false), 650);
   }
@@ -1816,8 +1924,8 @@ export default function App() {
     if (viewMode === "candy") {
       return transactions.filter((t) => t.is_p2m || t.channel?.includes("settle") || t.sender.includes("BAKERY") || t.receiver.includes("BAKERY") || t.sender.includes("MERCHANT") || t.receiver.includes("MERCHANT"));
     }
-    if (viewMode === "cashDeposit") {
-      return transactions.filter((t) => t.channel?.includes("cash") || t.amount >= 1500 || t.channel?.includes("settle"));
+    if (viewMode === "cashDeposit" || viewMode === "cashLaundering") {
+      return transactions.filter((t) => t.channel?.includes("cash") || t.amount >= 1500 || t.channel?.includes("settle") || t.sender.includes("PROVIDER") || t.receiver.includes("PROVIDER"));
     }
     return transactions;
   }, [transactions, viewMode]);
@@ -1852,8 +1960,8 @@ export default function App() {
       activeEdges.forEach((e) => { nodeIds.add(e.source); nodeIds.add(e.target); });
       activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
       activePaths = (trace.paths || []).filter((p) => p.some((id) => id.includes("BAKERY") || id.includes("MERCHANT")));
-    } else if (viewMode === "cashDeposit") {
-      activeEdges = (trace.edges || []).filter((e) => (e.amount || 0) >= 1500 || e.channel?.includes("cash"));
+    } else if (viewMode === "cashDeposit" || viewMode === "cashLaundering") {
+      activeEdges = (trace.edges || []).filter((e) => (e.amount || 0) >= 1500 || e.channel?.includes("cash") || e.source.includes("PROVIDER") || e.target.includes("PROVIDER") || e.source.includes("FORT-ROAD") || e.target.includes("FORT-ROAD"));
       const nodeIds = new Set();
       activeEdges.forEach((e) => { nodeIds.add(e.source); nodeIds.add(e.target); });
       activeNodes = (trace.nodes || []).filter((n) => nodeIds.has(n.id));
@@ -2658,7 +2766,9 @@ export default function App() {
                       <div className="dossier-title-col">
                         <b>{privacy && selectedNode.id.startsWith("STUDENT") ? "STUDENT •••" : selectedNode.id}</b>
                         <span className="role-tag-badge">
-                          {selectedNode.id.includes("FAKE-ACC") || selectedNode.id.includes("MULE") || selectedNode.role === "possible-convergence"
+                          {selectedNode.id.includes("PROVIDER") || selectedNode.id.includes("HANDLER")
+                            ? "PROVIDER (CASH AGGREGATOR)"
+                            : selectedNode.id.includes("FAKE-ACC") || selectedNode.id.includes("MULE") || selectedNode.role === "possible-convergence"
                             ? "FAKE ACC (MULE)"
                             : selectedNode.id.includes("CASHOUT") || selectedNode.id.includes("HUB") || selectedNode.role === "destination"
                             ? "CASHOUT HUB"
@@ -2690,7 +2800,9 @@ export default function App() {
                       <div className="dossier-stat-item">
                         <span>{t.dossierRiskType || "Account Risk Type:"}</span>
                         <b>
-                          {selectedNode.incoming >= 2 || selectedNode.id.includes("FAKE-ACC") || selectedNode.id.includes("MULE")
+                          {selectedNode.id.includes("PROVIDER") || selectedNode.id.includes("HANDLER")
+                            ? "🎒 Provider / Cash Aggregator: Receives physical cash handovers from students, pools cash until ₹2,000 threshold, then drops at shop counter"
+                            : selectedNode.incoming >= 2 || selectedNode.id.includes("FAKE-ACC") || selectedNode.id.includes("MULE")
                             ? (t.dossierHighRisk || "⚠️ High Risk: Fake Account secretly collecting money from multiple people (Mule)")
                             : selectedNode.outgoing === 0 || selectedNode.id.includes("CASHOUT") || selectedNode.id.includes("HUB")
                             ? (t.dossierDestination || "🏛️ Final Destination: Cashout account where collected funds land")

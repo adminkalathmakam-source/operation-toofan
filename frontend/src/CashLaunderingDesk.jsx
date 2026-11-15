@@ -5,6 +5,7 @@ import {
   RotateCcw, ShieldCheck, Sparkles, Store, Trash2, User, Users, Volume2, Wallet, Zap
 } from "lucide-react";
 import { sounds } from "./soundEffects";
+import { syncClient } from "./syncClient";
 
 function money(value) {
   return new Intl.NumberFormat("en-IN", {
@@ -44,11 +45,13 @@ export default function CashLaunderingDesk({
   // Mode B: Accumulator Pocket State
   const [pocketStudent, setPocketStudent] = useState("STUDENT-014");
   const [pocketAmount, setPocketAmount] = useState("250");
-  const [pocketNote, setPocketNote] = useState("Cash fee");
+  const [pocketNote, setPocketNote] = useState("Student cash handover");
+  const [threshold, setThreshold] = useState(2000); // 2000 or 1000 threshold
   const [pocketStash, setPocketStash] = useState([
-    { id: "p1", student: "STUDENT-014", amount: 350, note: "Cash snacks / ticket" },
-    { id: "p2", student: "STUDENT-028", amount: 400, note: "Fest registration cash" },
-    { id: "p3", student: "STUDENT-031", amount: 250, note: "Group contribution cash" },
+    { id: "p1", student: "STUDENT-014", amount: 250, note: "Student cash fee handover (₹250)" },
+    { id: "p2", student: "STUDENT-028", amount: 500, note: "Student cash fee handover (₹500)" },
+    { id: "p3", student: "STUDENT-031", amount: 750, note: "Student cash pool handover (₹750)" },
+    { id: "p4", student: "STUDENT-044", amount: 500, note: "Student cash fee handover (₹500)" },
   ]);
 
   const [busy, setBusy] = useState(false);
@@ -57,8 +60,7 @@ export default function CashLaunderingDesk({
   const [launderingHopStage, setLaunderingHopStage] = useState(null); // null | 1 | 2 | 3 | 4
 
   const pocketTotal = pocketStash.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-  const threshold = 1000;
-  const progressPercent = Math.min(100, Math.round((pocketTotal / threshold) * 100));
+  const progressPercent = Math.min(100, Math.round((pocketTotal / (threshold || 2000)) * 100));
 
   function handleAddStudentToPocket(e) {
     if (e) e.preventDefault();
@@ -175,6 +177,10 @@ export default function CashLaunderingDesk({
     await new Promise((r) => setTimeout(r, 380));
     setLaunderingHopStage(4);
 
+    try {
+      await syncClient.sendTransactions(newTxList, "cash-desk");
+    } catch {}
+
     if (typeof onAddTransactions === "function") {
       await onAddTransactions(newTxList, merchantObs);
     }
@@ -279,6 +285,10 @@ export default function CashLaunderingDesk({
     await new Promise((r) => setTimeout(r, 380));
     setLaunderingHopStage(4);
 
+    try {
+      await syncClient.sendTransactions(combinedTxs, "cash-desk");
+    } catch {}
+
     if (typeof onAddTransactions === "function") {
       await onAddTransactions(combinedTxs, merchantObs);
     }
@@ -311,9 +321,9 @@ export default function CashLaunderingDesk({
         </div>
         <h2>Cash to Shop Laundering Station</h2>
         <p>
-          Students hand physical cash to the provider/agent. The provider pools the cash until reaching ₹1,000, 
-          then takes the physical currency to a local bakery or shop. The shop deposits the cash and transfers 
-          online money to the provider's alt account (mule), which forwards it to the main master account.
+          Students hand physical cash to the provider/agent (e.g. ₹250). The provider pools and saves cash 
+          until reaching ₹2,000, then takes the physical cash to a local bakery or shop counter. The shop deposits 
+          the cash and transfers online funds to the provider&apos;s alt account (mule), which forwards it to the main cashout hub.
         </p>
 
         {/* MODE SELECTOR TABS */}
@@ -666,10 +676,44 @@ export default function CashLaunderingDesk({
               <div className="pocket-progress-sub">
                 <span>
                   {progressPercent >= 100
-                    ? "🎉 ₹1,000 Threshold Reached! Ready to walk to bakery!"
+                    ? `🎉 ${money(threshold)} Target Reached! Ready to walk to bakery & deposit cash!`
                     : `${money(pocketTotal)} of ${money(threshold)} gathered (${progressPercent}%)`}
                 </span>
-                <b>Target: {money(threshold)}</b>
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>Target Threshold:</span>
+                  <button
+                    type="button"
+                    style={{
+                      padding: "2px 8px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      fontWeight: threshold === 2000 ? "700" : "500",
+                      background: threshold === 2000 ? "#059669" : "#e2e8f0",
+                      color: threshold === 2000 ? "#ffffff" : "#475569",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => { sounds.playClick(); setThreshold(2000); }}
+                  >
+                    ₹2,000 (Default)
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: "2px 8px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      fontWeight: threshold === 1000 ? "700" : "500",
+                      background: threshold === 1000 ? "#059669" : "#e2e8f0",
+                      color: threshold === 1000 ? "#ffffff" : "#475569",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => { sounds.playClick(); setThreshold(1000); }}
+                  >
+                    ₹1,000
+                  </button>
+                </div>
               </div>
             </div>
 

@@ -432,13 +432,17 @@ async def load_sample_sync(req: SyncSampleRequest) -> dict:
             {"sender": "FAKE-ACC-4C", "receiver": "CASHOUT-HUB", "amount": 2650, "channel": "transfer", "is_p2m": False, "reference_id": "DEMO-DIR-04"},
         ]
         obs = DEFAULT_MERCHANT_OBS
-    elif s_key == "cashDeposit":
+    elif s_key == "cashDeposit" or s_key == "cashLaundering":
         records = [
-            {"sender": "BAKERY-VAULT-01", "receiver": "BANK-SETTLEMENT", "amount": 1850, "channel": "cash-deposit", "is_p2m": False, "reference_id": "DEMO-CASH-01"},
-            {"sender": "BANK-SETTLEMENT", "receiver": "FAKE-ACC-7A", "amount": 1800, "channel": "settlement", "is_p2m": False, "reference_id": "DEMO-CASH-02"},
-            {"sender": "FAKE-ACC-7A", "receiver": "CASHOUT-HUB", "amount": 1750, "channel": "transfer", "is_p2m": False, "reference_id": "DEMO-CASH-03"},
+            {"sender": "STUDENT-014", "receiver": "PROVIDER-HARSH", "amount": 250, "channel": "physical-cash", "is_p2m": False, "reference_id": "DEMO-CSH-01"},
+            {"sender": "STUDENT-028", "receiver": "PROVIDER-HARSH", "amount": 500, "channel": "physical-cash", "is_p2m": False, "reference_id": "DEMO-CSH-02"},
+            {"sender": "STUDENT-031", "receiver": "PROVIDER-HARSH", "amount": 750, "channel": "physical-cash", "is_p2m": False, "reference_id": "DEMO-CSH-03"},
+            {"sender": "STUDENT-044", "receiver": "PROVIDER-HARSH", "amount": 500, "channel": "physical-cash", "is_p2m": False, "reference_id": "DEMO-CSH-04"},
+            {"sender": "PROVIDER-HARSH", "receiver": "FORT-ROAD-BAKERY", "amount": 2000, "channel": "shop-counter-cash", "is_p2m": False, "reference_id": "DEMO-CSH-05"},
+            {"sender": "FORT-ROAD-BAKERY", "receiver": "ALT-ACC-7A", "amount": 2000, "channel": "merchant-settlement", "is_p2m": False, "reference_id": "DEMO-CSH-06"},
+            {"sender": "ALT-ACC-7A", "receiver": "MAIN-CASHOUT-HUB", "amount": 2000, "channel": "bank-transfer", "is_p2m": False, "reference_id": "DEMO-CSH-07"},
         ]
-        obs = [{"merchant_alias": "BAKERY-VAULT-01", "category": "Bakery", "usual_daily_receipts": 200, "observed_daily_receipts": 1850}]
+        obs = [{"merchant_alias": "FORT-ROAD-BAKERY", "category": "Bakery & Sweets", "usual_daily_receipts": 200, "observed_daily_receipts": 2200}]
     else:
         records = list(DEFAULT_TRANSACTIONS)
         obs = DEFAULT_MERCHANT_OBS
