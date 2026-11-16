@@ -10694,3 +10694,137 @@ code, pre, .mono {
 .btn-pocket-drop-bakery:hover {
   background: #059669;
 }
+
+/* POCKET STASH MULTI-STUDENT ENHANCEMENTS */
+.pocket-hud-contributors {
+  margin: 6px 0 10px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 8px;
+}
+
+.contributors-heading {
+  display: block;
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: uppercase;
+  color: #92400e;
+  margin-bottom: 4px;
+  letter-spacing: 0.04em;
+}
+
+.contributors-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.contributor-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  background: #ffffff;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 2px 7px;
+  color: #78350f;
+}
+
+.contributor-pill .stu-tag {
+  font-weight: 700;
+  color: #0284c7;
+}
+
+.pocket-hud-student-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.btn-student-quick-handover {
+  background: #ffffff;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(245, 158, 11, 0.1);
+}
+
+.btn-student-quick-handover:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  transform: translateY(-1px);
+}
+
+.btn-student-pool-all {
+  background: #f59e0b;
+  color: #ffffff;
+  border: none;
+  font-size: 11px;
+  font-weight: 750;
+  padding: 6px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.3);
+}
+
+.btn-student-pool-all:hover {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+/* PAY SHEET STUDENT GIVER CHOOSER */
+.sheet-student-choice-box {
+  margin-bottom: 12px;
+}
+
+.student-choice-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.student-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: #334155;
+}
+
+.student-chip-btn .stu-chip-id {
+  font-weight: 700;
+}
+
+.student-chip-btn .stu-chip-amt {
+  font-weight: 800;
+  color: #0284c7;
+}
+
+.student-chip-btn.active {
+  background: #e0f2fe;
+  border-color: #0284c7;
+  color: #0369a1;
+  box-shadow: 0 0 0 1px #0284c7;
+}
+
+.student-chip-btn:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}

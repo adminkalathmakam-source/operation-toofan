@@ -29,6 +29,13 @@ const RECENT_CONTACTS = [
   { id: "cashouthub", name: "Final Cashout Hub", handle: "cashout.hub@settle", category: "Cashout Destination", color: "#8b5cf6", initial: "C", verified: false, isBusiness: false },
 ];
 
+export const DEMO_STUDENT_PROFILES = [
+  { id: "STUDENT-014", name: "Aarav S. (Student 14)", amount: 250, badge: "Stu 14: ₹250", color: "#38bdf8" },
+  { id: "STUDENT-028", name: "Pooja M. (Student 28)", amount: 500, badge: "Stu 28: ₹500", color: "#e91e63" },
+  { id: "STUDENT-031", name: "Rahul K. (Student 31)", amount: 750, badge: "Stu 31: ₹750", color: "#a855f7" },
+  { id: "STUDENT-044", name: "Sneha R. (Student 44)", amount: 500, badge: "Stu 44: ₹500", color: "#10b981" },
+];
+
 const PRESETS = [
   { id: "candy", label: "🍬 Candy Shop (₹35)", desc: "Pre-fill: Student pays ₹35 at Bakery -> money forwarded to Fake Acc" },
   { id: "direct", label: "⚡ Split Transfer (₹700)", desc: "Pre-fill: Student transfer of ₹700 to Fake Acc 7A" },
@@ -79,13 +86,16 @@ export default function PayDemo({
   const canvasRef = useRef(null);
 
   // Current accumulated stash in PROVIDER-HARSH's pocket from the live transactions
-  const { currentPocketStash, totalStudentHandovers, totalCounterDrops } = useMemo(() => {
+  const { currentPocketStash, studentContributors, totalStudentHandovers, totalCounterDrops } = useMemo(() => {
     let studentHandovers = 0;
     let counterDrops = 0;
+    const contributors = new Map();
     (transactions || []).forEach((t) => {
       const amt = Number(t.amount) || 0;
       if (t.receiver === "PROVIDER-HARSH") {
         studentHandovers += amt;
+        const s = t.sender || "STUDENT-UNKNOWN";
+        contributors.set(s, (contributors.get(s) || 0) + amt);
       }
       if (t.sender === "PROVIDER-HARSH") {
         counterDrops += amt;
@@ -94,10 +104,149 @@ export default function PayDemo({
     const stash = Math.max(0, studentHandovers - counterDrops);
     return {
       currentPocketStash: stash,
+      studentContributors: contributors,
       totalStudentHandovers: studentHandovers,
       totalCounterDrops: counterDrops,
     };
   }, [transactions]);
+
+  // Quick 1-click single student cash handover
+  async function handleStudentQuickHandover(studentProfile) {
+    setBusy(true);
+    sounds.playClick();
+    const now = Date.now();
+    const studentTx = {
+      sender: studentProfile.id,
+      receiver: "PROVIDER-HARSH",
+      amount: studentProfile.amount,
+      channel: "physical-cash",
+      is_p2m: false,
+      reference_id: `CSH-STU-${now}`,
+      event_type: "student_handover",
+    };
+
+    const newStash = currentPocketStash + studentProfile.amount;
+    let allTxs = [studentTx];
+    let merchantObs = [];
+
+    if (newStash >= 2000) {
+      sounds.playCashRegister();
+      const dropTxs = [
+        {
+          sender: "PROVIDER-HARSH",
+          receiver: "FORT-ROAD-BAKERY",
+          amount: newStash,
+          channel: "shop-counter-cash",
+          is_p2m: false,
+          reference_id: `CSH-BAK-${now + 1}`,
+          event_type: "counter_deposit",
+        },
+        {
+          sender: "FORT-ROAD-BAKERY",
+          receiver: "ALT-ACC-7A",
+          amount: newStash,
+          channel: "merchant-settlement",
+          is_p2m: false,
+          reference_id: `STTL-${now + 2}`,
+          event_type: "online_settlement",
+        },
+        {
+          sender: "ALT-ACC-7A",
+          receiver: "MAIN-CASHOUT-HUB",
+          amount: newStash,
+          channel: "bank-transfer",
+          is_p2m: false,
+          reference_id: `TRF-HUB-${now + 3}`,
+          event_type: "hub_transfer",
+        },
+      ];
+      allTxs = [studentTx, ...dropTxs];
+      merchantObs = [
+        {
+          merchant_alias: "FORT-ROAD-BAKERY",
+          category: "Bakery & Sweets",
+          usual_daily_receipts: 200,
+          observed_daily_receipts: 200 + newStash,
+        },
+      ];
+      setStatus(`🚨 ${studentProfile.name} handed ₹${studentProfile.amount}. Stash reached ₹${newStash}! Provider dropped ₹${newStash} cash at Bakery counter -> Alt Acc 7A -> Hub!`);
+    } else {
+      setStatus(`🎒 Cash saved: ${studentProfile.name} handed over ₹${studentProfile.amount} cash to Provider Harsh! Pocket stash: ₹${newStash} / ₹2,000 threshold (money stays in pocket).`);
+    }
+
+    try {
+      await syncClient.sendTransactions(allTxs, "mobile-gpay-student-handover");
+    } catch {}
+    if (typeof onAddTransactions === "function") {
+      await onAddTransactions(allTxs, merchantObs);
+    }
+    setBusy(false);
+  }
+
+  // Quick 1-click pool all 4 students adding up to ₹2,000, then drop at bakery counter
+  async function handleFillAllStudentsTo2000() {
+    setBusy(true);
+    sounds.playCashRegister();
+    const now = Date.now();
+    const studentTxs = DEMO_STUDENT_PROFILES.map((st, idx) => ({
+      sender: st.id,
+      receiver: "PROVIDER-HARSH",
+      amount: st.amount,
+      channel: "physical-cash",
+      is_p2m: false,
+      reference_id: `CSH-STU-${now + idx}`,
+      event_type: "student_handover",
+    }));
+
+    const dropTxs = [
+      {
+        sender: "PROVIDER-HARSH",
+        receiver: "FORT-ROAD-BAKERY",
+        amount: 2000,
+        channel: "shop-counter-cash",
+        is_p2m: false,
+        reference_id: `CSH-BAK-${now + 10}`,
+        event_type: "counter_deposit",
+      },
+      {
+        sender: "FORT-ROAD-BAKERY",
+        receiver: "ALT-ACC-7A",
+        amount: 2000,
+        channel: "merchant-settlement",
+        is_p2m: false,
+        reference_id: `STTL-${now + 11}`,
+        event_type: "online_settlement",
+      },
+      {
+        sender: "ALT-ACC-7A",
+        receiver: "MAIN-CASHOUT-HUB",
+        amount: 2000,
+        channel: "bank-transfer",
+        is_p2m: false,
+        reference_id: `TRF-HUB-${now + 12}`,
+        event_type: "hub_transfer",
+      },
+    ];
+
+    const merchantObs = [
+      {
+        merchant_alias: "FORT-ROAD-BAKERY",
+        category: "Bakery & Sweets",
+        usual_daily_receipts: 200,
+        observed_daily_receipts: 2200,
+      },
+    ];
+
+    const combined = [...studentTxs, ...dropTxs];
+    try {
+      await syncClient.sendTransactions(combined, "mobile-gpay-all-students");
+    } catch {}
+    if (typeof onAddTransactions === "function") {
+      await onAddTransactions(combined, merchantObs);
+    }
+    setStatus("💵 4 Students handed over cash (₹250 + ₹500 + ₹750 + ₹500 = ₹2,000) -> Provider dropped ₹2,000 pooled cash at Bakery counter -> Alt Acc 7A -> Hub!");
+    setBusy(false);
+  }
 
   async function depositCurrentPocketStash() {
     if (currentPocketStash <= 0) {
@@ -386,6 +535,36 @@ export default function PayDemo({
         event_type: "student_handover",
       },
       {
+        sender: "STUDENT-028",
+        receiver: "PROVIDER-HARSH",
+        amount: 500,
+        channel: "physical-cash",
+        is_p2m: false,
+        reference_id: `CSH-STU-${now + 3}`,
+        timestamp: new Date(now - 42 * 60 * 1000).toISOString(),
+        event_type: "student_handover",
+      },
+      {
+        sender: "STUDENT-031",
+        receiver: "PROVIDER-HARSH",
+        amount: 750,
+        channel: "physical-cash",
+        is_p2m: false,
+        reference_id: `CSH-STU-${now + 4}`,
+        timestamp: new Date(now - 39 * 60 * 1000).toISOString(),
+        event_type: "student_handover",
+      },
+      {
+        sender: "STUDENT-044",
+        receiver: "PROVIDER-HARSH",
+        amount: 500,
+        channel: "physical-cash",
+        is_p2m: false,
+        reference_id: `CSH-STU-${now + 5}`,
+        timestamp: new Date(now - 37 * 60 * 1000).toISOString(),
+        event_type: "student_handover",
+      },
+      {
         sender: "PROVIDER-HARSH",
         receiver: "FORT-ROAD-BAKERY",
         amount: 2000,
@@ -582,32 +761,31 @@ export default function PayDemo({
     let merchantObs = [];
 
     if (cleanReceiver === "PROVIDER-HARSH") {
-      const studentHandoverTx = {
-        sender: cleanSender,
-        receiver: "PROVIDER-HARSH",
-        amount: numAmount,
-        channel: "physical-cash",
-        is_p2m: false,
-        reference_id: txId,
-        event_type: "student_handover",
-      };
-
-      const newStashTotal = currentPocketStash + numAmount;
+      const now = Date.now();
       const POCKET_THRESHOLD = 2000;
 
-      if (newStashTotal >= POCKET_THRESHOLD) {
-        // Threshold reached! Dump pooled cash to Bakery counter, which settles to Alt Acc and forwards to Hub!
-        const dropAmount = newStashTotal;
-        const now = Date.now();
+      // If user is paying ₹2,000 or more in one action, break it down across the 4 students
+      // so it shows the exact students who gave money (₹250 + ₹500 + ₹750 + ₹500 = ₹2,000)
+      if (numAmount >= POCKET_THRESHOLD) {
+        const studentTxs = DEMO_STUDENT_PROFILES.map((st, idx) => ({
+          sender: st.id,
+          receiver: "PROVIDER-HARSH",
+          amount: st.amount,
+          channel: "physical-cash",
+          is_p2m: false,
+          reference_id: `CSH-STU-${now + idx}`,
+          event_type: "student_handover",
+        }));
+        const dropAmount = 2000;
         generatedTx = [
-          studentHandoverTx,
+          ...studentTxs,
           {
             sender: "PROVIDER-HARSH",
             receiver: "FORT-ROAD-BAKERY",
             amount: dropAmount,
             channel: "shop-counter-cash",
             is_p2m: false,
-            reference_id: `CSH-BAK-${now}`,
+            reference_id: `CSH-BAK-${now + 10}`,
             event_type: "counter_deposit",
           },
           {
@@ -616,7 +794,7 @@ export default function PayDemo({
             amount: dropAmount,
             channel: "merchant-settlement",
             is_p2m: false,
-            reference_id: `STTL-${now + 1}`,
+            reference_id: `STTL-${now + 11}`,
             event_type: "online_settlement",
           },
           {
@@ -625,7 +803,7 @@ export default function PayDemo({
             amount: dropAmount,
             channel: "bank-transfer",
             is_p2m: false,
-            reference_id: `TRF-HUB-${now + 2}`,
+            reference_id: `TRF-HUB-${now + 12}`,
             event_type: "hub_transfer",
           },
         ];
@@ -637,12 +815,65 @@ export default function PayDemo({
             observed_daily_receipts: 200 + dropAmount,
           },
         ];
-        setStatus(`🚨 Pocket Stash hit ₹${dropAmount} (>= ₹2,000 threshold)! Provider Harsh dropped ₹${dropAmount} cash at Fort Road Bakery counter -> Alt Acc 7A -> Main Cashout Hub!`);
+        setStatus(`🚨 4 Students pooled ₹2,000 (₹250 + ₹500 + ₹750 + ₹500)! Provider Harsh dropped ₹2,000 cash at Fort Road Bakery counter -> Alt Acc 7A -> Main Cashout Hub!`);
       } else {
-        // Stash is STILL accumulating in the pocket!
-        // ONLY the student handover is recorded. It DOES NOT go to bakery, alt acc, or hub!
-        generatedTx = [studentHandoverTx];
-        setStatus(`🎒 Pocket Stash updated! ₹${numAmount} saved in Provider Harsh's pocket (Total: ₹${newStashTotal} / ₹2,000 threshold). Money is SAVED in pocket and NOT sent to hub yet!`);
+        // Individual student handover
+        const studentHandoverTx = {
+          sender: cleanSender,
+          receiver: "PROVIDER-HARSH",
+          amount: numAmount,
+          channel: "physical-cash",
+          is_p2m: false,
+          reference_id: txId,
+          event_type: "student_handover",
+        };
+
+        const newStashTotal = currentPocketStash + numAmount;
+        if (newStashTotal >= POCKET_THRESHOLD) {
+          const dropAmount = newStashTotal;
+          generatedTx = [
+            studentHandoverTx,
+            {
+              sender: "PROVIDER-HARSH",
+              receiver: "FORT-ROAD-BAKERY",
+              amount: dropAmount,
+              channel: "shop-counter-cash",
+              is_p2m: false,
+              reference_id: `CSH-BAK-${now}`,
+              event_type: "counter_deposit",
+            },
+            {
+              sender: "FORT-ROAD-BAKERY",
+              receiver: "ALT-ACC-7A",
+              amount: dropAmount,
+              channel: "merchant-settlement",
+              is_p2m: false,
+              reference_id: `STTL-${now + 1}`,
+              event_type: "online_settlement",
+            },
+            {
+              sender: "ALT-ACC-7A",
+              receiver: "MAIN-CASHOUT-HUB",
+              amount: dropAmount,
+              channel: "bank-transfer",
+              is_p2m: false,
+              reference_id: `TRF-HUB-${now + 2}`,
+              event_type: "hub_transfer",
+            },
+          ];
+          merchantObs = [
+            {
+              merchant_alias: "FORT-ROAD-BAKERY",
+              category: "Bakery & Sweets",
+              usual_daily_receipts: 200,
+              observed_daily_receipts: 200 + dropAmount,
+            },
+          ];
+          setStatus(`🚨 Stash reached ₹${dropAmount} (>= ₹2,000)! Provider Harsh dropped ₹${dropAmount} cash at Bakery counter -> Alt Acc 7A -> Main Cashout Hub!`);
+        } else {
+          generatedTx = [studentHandoverTx];
+          setStatus(`🎒 Cash saved: ${cleanSender} handed over ₹${numAmount} cash to Provider Harsh! Pocket stash: ₹${newStashTotal} / ₹2,000 threshold (money stays in pocket).`);
+        }
       }
     } else if (cleanReceiver === "FORT-ROAD-BAKERY" || cleanReceiver === "CANTEEN-QR-01") {
       // Legit retail P2M QR purchase: Student buys food at shop. It stays at shop and does NOT route to hub!
@@ -937,27 +1168,49 @@ export default function PayDemo({
                   style={{ width: `${Math.min(100, Math.round((currentPocketStash / 2000) * 100))}%` }}
                 />
               </div>
+              {/* Contributors Pill Row */}
+              {studentContributors && studentContributors.size > 0 && (
+                <div className="pocket-hud-contributors">
+                  <small className="contributors-heading">Active Student Contributors:</small>
+                  <div className="contributors-badges">
+                    {Array.from(studentContributors.entries()).map(([stuId, amt]) => (
+                      <span key={stuId} className="contributor-pill">
+                        <span className="stu-tag">{stuId.replace("STUDENT-", "Stu ")}</span>
+                        <b>{money(amt)}</b>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="pocket-hud-actions-row">
                 <span className="pocket-hud-note">
                   {currentPocketStash >= 2000
-                    ? "✅ Threshold reached! Pooled cash ready for Bakery -> Alt Acc -> Hub."
+                    ? "✅ ₹2,000 Threshold reached! Pooled cash ready for Bakery -> Alt Acc -> Hub."
                     : currentPocketStash > 0
-                    ? `Money sits in provider's pocket (does NOT reach hub until ₹2,000 threshold). Need ${money(2000 - currentPocketStash)} more.`
-                    : "Send cash to Harsh (Provider). Funds accumulate here in pocket first."}
+                    ? `Provider holds ${money(currentPocketStash)} in pocket stash (does NOT reach hub yet). Need ${money(2000 - currentPocketStash)} more from students to hit ₹2k.`
+                    : "Students give cash (₹250, ₹500, ₹750, ₹500) to Provider Harsh. Funds accumulate in pocket until ₹2,000."}
                 </span>
-                <div className="pocket-hud-buttons">
+
+                <div className="pocket-hud-student-grid">
+                  {DEMO_STUDENT_PROFILES.map((st) => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      className="btn-student-quick-handover"
+                      onClick={() => handleStudentQuickHandover(st)}
+                      title={`Record ${st.name} giving ${money(st.amount)} cash to Provider`}
+                    >
+                      + {st.id.replace("STUDENT-", "Stu ")} ({money(st.amount)})
+                    </button>
+                  ))}
                   <button
                     type="button"
-                    className="btn-pocket-add-cash"
-                    onClick={() => {
-                      setRecipient("provider.harsh@stash");
-                      setRecipientName("Harsh (Cash Provider)");
-                      setAmount("75");
-                      setNote("Student cash handover (₹75)");
-                      setShowPaySheet(true);
-                    }}
+                    className="btn-student-pool-all"
+                    onClick={handleFillAllStudentsTo2000}
+                    title="4 Students give exact amounts adding up to ₹2,000 (₹250 + ₹500 + ₹750 + ₹500)"
                   >
-                    + Handover ₹75 Cash
+                    ⚡ Pool ₹2k (4 Students)
                   </button>
                   {currentPocketStash > 0 && (
                     <button
@@ -1393,6 +1646,29 @@ export default function PayDemo({
                   <span className="verified-chip"><Check size={10} /> Verified Merchant</span>
                 </div>
                 <small className="banking-legal-name">Banking Name: {recipientName.toUpperCase()} PVT LTD</small>
+              </div>
+            </div>
+
+            {/* SELECT WHICH STUDENT IS GIVING CASH */}
+            <div className="sheet-student-choice-box">
+              <label className="section-micro-label">SELECT STUDENT GIVER</label>
+              <div className="student-choice-chips-row">
+                {DEMO_STUDENT_PROFILES.map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    className={`student-chip-btn ${sender === st.id ? "active" : ""}`}
+                    onClick={() => {
+                      sounds.playClick();
+                      setSender(st.id);
+                      setAmount(String(st.amount));
+                      setNote(`Student cash handover (${money(st.amount)})`);
+                    }}
+                  >
+                    <span className="stu-chip-id">{st.id.replace("STUDENT-", "Stu ")}</span>
+                    <span className="stu-chip-amt">{money(st.amount)}</span>
+                  </button>
+                ))}
               </div>
             </div>
 

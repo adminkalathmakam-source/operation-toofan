@@ -25,7 +25,7 @@ export default function CashLaunderingDesk({
   lang = "en",
 }) {
   // Mode switcher: "instant" (1-click direct flow) | "accumulator" (collect from students until ₹1000)
-  const [deskMode, setDeskMode] = useState("instant");
+  const [deskMode, setDeskMode] = useState("accumulator");
 
   // Mode A: Direct Cash Flow Form State
   const [student, setStudent] = useState("STUDENT-014");
@@ -113,21 +113,20 @@ export default function CashLaunderingDesk({
     const cleanMainAcc = mainAcc.trim().toUpperCase() || "MAIN-CASHOUT-HUB";
     const now = Date.now();
 
-    // 4 Chained Transactions:
-    // 1. Student -> Provider (Physical Cash)
-    // 2. Provider -> Shop (Counter Cash Deposit)
-    // 3. Shop -> Alt Acc (Online Settlement)
-    // 4. Alt Acc -> Main Acc (Forwarding Transfer)
+    // Chained Transactions:
+    // If ₹2,000 or more, break student handovers into 4 real students (₹250 + ₹500 + ₹750 + ₹500 = ₹2,000)
+    // so it accurately reflects multiple student contributions rather than 1 student giving ₹2,000!
+    const studentHandovers = numAmount >= 2000 ? [
+      { sender: "STUDENT-014", receiver: cleanProvider, amount: 250, channel: "physical-cash", is_p2m: false, reference_id: `CASH-STU-${now}-01`, event_type: "cash-handover" },
+      { sender: "STUDENT-028", receiver: cleanProvider, amount: 500, channel: "physical-cash", is_p2m: false, reference_id: `CASH-STU-${now}-02`, event_type: "cash-handover" },
+      { sender: "STUDENT-031", receiver: cleanProvider, amount: 750, channel: "physical-cash", is_p2m: false, reference_id: `CASH-STU-${now}-03`, event_type: "cash-handover" },
+      { sender: "STUDENT-044", receiver: cleanProvider, amount: 500, channel: "physical-cash", is_p2m: false, reference_id: `CASH-STU-${now}-04`, event_type: "cash-handover" },
+    ] : [
+      { sender: cleanStudent, receiver: cleanProvider, amount: numAmount, channel: "physical-cash", is_p2m: false, reference_id: `CASH-STU-${now}`, event_type: "cash-handover" }
+    ];
+
     const newTxList = [
-      {
-        sender: cleanStudent,
-        receiver: cleanProvider,
-        amount: numAmount,
-        channel: "physical-cash",
-        is_p2m: false,
-        reference_id: `CASH-STU-${now}`,
-        event_type: "cash-handover",
-      },
+      ...studentHandovers,
       {
         sender: cleanProvider,
         receiver: cleanShop,
