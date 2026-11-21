@@ -54,9 +54,9 @@ export default function PayDemo({
 }) {
   const [activeTab, setActiveTab] = useState("consumer"); // consumer | business
   const [sender, setSender] = useState("STUDENT-014");
-  const [recipient, setRecipient] = useState("provider.harsh@stash");
-  const [recipientName, setRecipientName] = useState("Harsh (Cash Provider)");
-  const [amount, setAmount] = useState("75");
+  const [recipient, setRecipient] = useState("bakery.demo@upi");
+  const [recipientName, setRecipientName] = useState("Fort Road Bakery");
+  const [amount, setAmount] = useState("150");
   const [note, setNote] = useState("Student cash handover to pocket stash");
   const [bankAccount, setBankAccount] = useState("sbi");
 
@@ -723,20 +723,13 @@ export default function PayDemo({
     sounds.playClick();
 
     const numAmount = Number(amount) || 50;
-    const cleanSender = sender.trim().toUpperCase() || "STUDENT-014";
+    const cleanSender = (sender || "USER-01").trim().toUpperCase().replace(/\s+/g, "-");
 
-    let cleanReceiver = recipient.trim();
-    const rLower = cleanReceiver.toLowerCase();
-    const isProviderTarget =
-      rLower.includes("provider") ||
-      rLower.includes("harsh") ||
-      rLower.includes("stash") ||
-      rLower.includes("collector") ||
-      rLower.includes("cashpool");
+    let rawTarget = (recipientName || recipient || "FRIEND").trim();
+    let cleanReceiver = rawTarget.toUpperCase().replace(/\s+/g, "-");
 
-    if (isProviderTarget) {
-      cleanReceiver = "PROVIDER-HARSH";
-    } else if (rLower.includes("bakery") || rLower.includes("fort road")) {
+    const rLower = rawTarget.toLowerCase();
+    if (rLower.includes("bakery") || rLower.includes("fort road")) {
       cleanReceiver = "FORT-ROAD-BAKERY";
     } else if (rLower.includes("canteen")) {
       cleanReceiver = "CANTEEN-QR-01";
@@ -750,8 +743,8 @@ export default function PayDemo({
       cleanReceiver = "STUDENT-028";
     } else if (rLower.includes("student31") || rLower.includes("pooja")) {
       cleanReceiver = "STUDENT-031";
-    } else {
-      cleanReceiver = cleanReceiver.toUpperCase();
+    } else if (rLower.includes("harsh") || rLower.includes("provider")) {
+      cleanReceiver = "PROVIDER-HARSH";
     }
 
     const txId = `UPI/${Math.floor(100000000000 + Math.random() * 900000000000)}/PAY`;
@@ -760,156 +753,31 @@ export default function PayDemo({
     let generatedTx = [];
     let merchantObs = [];
 
-    if (cleanReceiver === "PROVIDER-HARSH") {
-      const now = Date.now();
-      const POCKET_THRESHOLD = 2000;
+    // Direct 1-to-1 Transfer for all payments
+    const isRetail = cleanReceiver.includes("BAKERY") || cleanReceiver.includes("CANTEEN") || cleanReceiver.includes("SHOP") || cleanReceiver.includes("STORE") || cleanReceiver.includes("MERCHANT");
+    const isMule = cleanReceiver.includes("FAKE-ACC") || cleanReceiver.includes("MULE") || cleanReceiver.includes("ALT-ACC");
 
-      // If user is paying ₹2,000 or more in one action, break it down across the 4 students
-      // so it shows the exact students who gave money (₹250 + ₹500 + ₹750 + ₹500 = ₹2,000)
-      if (numAmount >= POCKET_THRESHOLD) {
-        const studentTxs = DEMO_STUDENT_PROFILES.map((st, idx) => ({
-          sender: st.id,
-          receiver: "PROVIDER-HARSH",
-          amount: st.amount,
-          channel: "physical-cash",
-          is_p2m: false,
-          reference_id: `CSH-STU-${now + idx}`,
-          event_type: "student_handover",
-        }));
-        const dropAmount = 2000;
-        generatedTx = [
-          ...studentTxs,
-          {
-            sender: "PROVIDER-HARSH",
-            receiver: "FORT-ROAD-BAKERY",
-            amount: dropAmount,
-            channel: "shop-counter-cash",
-            is_p2m: false,
-            reference_id: `CSH-BAK-${now + 10}`,
-            event_type: "counter_deposit",
-          },
-          {
-            sender: "FORT-ROAD-BAKERY",
-            receiver: "ALT-ACC-7A",
-            amount: dropAmount,
-            channel: "merchant-settlement",
-            is_p2m: false,
-            reference_id: `STTL-${now + 11}`,
-            event_type: "online_settlement",
-          },
-          {
-            sender: "ALT-ACC-7A",
-            receiver: "MAIN-CASHOUT-HUB",
-            amount: dropAmount,
-            channel: "bank-transfer",
-            is_p2m: false,
-            reference_id: `TRF-HUB-${now + 12}`,
-            event_type: "hub_transfer",
-          },
-        ];
-        merchantObs = [
-          {
-            merchant_alias: "FORT-ROAD-BAKERY",
-            category: "Bakery & Sweets",
-            usual_daily_receipts: 200,
-            observed_daily_receipts: 200 + dropAmount,
-          },
-        ];
-        setStatus(`🚨 4 Students pooled ₹2,000 (₹250 + ₹500 + ₹750 + ₹500)! Provider Harsh dropped ₹2,000 cash at Fort Road Bakery counter -> Alt Acc 7A -> Main Cashout Hub!`);
-      } else {
-        // Individual student handover
-        const studentHandoverTx = {
-          sender: cleanSender,
-          receiver: "PROVIDER-HARSH",
-          amount: numAmount,
-          channel: "physical-cash",
-          is_p2m: false,
-          reference_id: txId,
-          event_type: "student_handover",
-        };
-
-        const newStashTotal = currentPocketStash + numAmount;
-        if (newStashTotal >= POCKET_THRESHOLD) {
-          const dropAmount = newStashTotal;
-          generatedTx = [
-            studentHandoverTx,
-            {
-              sender: "PROVIDER-HARSH",
-              receiver: "FORT-ROAD-BAKERY",
-              amount: dropAmount,
-              channel: "shop-counter-cash",
-              is_p2m: false,
-              reference_id: `CSH-BAK-${now}`,
-              event_type: "counter_deposit",
-            },
-            {
-              sender: "FORT-ROAD-BAKERY",
-              receiver: "ALT-ACC-7A",
-              amount: dropAmount,
-              channel: "merchant-settlement",
-              is_p2m: false,
-              reference_id: `STTL-${now + 1}`,
-              event_type: "online_settlement",
-            },
-            {
-              sender: "ALT-ACC-7A",
-              receiver: "MAIN-CASHOUT-HUB",
-              amount: dropAmount,
-              channel: "bank-transfer",
-              is_p2m: false,
-              reference_id: `TRF-HUB-${now + 2}`,
-              event_type: "hub_transfer",
-            },
-          ];
-          merchantObs = [
-            {
-              merchant_alias: "FORT-ROAD-BAKERY",
-              category: "Bakery & Sweets",
-              usual_daily_receipts: 200,
-              observed_daily_receipts: 200 + dropAmount,
-            },
-          ];
-          setStatus(`🚨 Stash reached ₹${dropAmount} (>= ₹2,000)! Provider Harsh dropped ₹${dropAmount} cash at Bakery counter -> Alt Acc 7A -> Main Cashout Hub!`);
-        } else {
-          generatedTx = [studentHandoverTx];
-          setStatus(`🎒 Cash saved: ${cleanSender} handed over ₹${numAmount} cash to Provider Harsh! Pocket stash: ₹${newStashTotal} / ₹2,000 threshold (money stays in pocket).`);
-        }
-      }
-    } else if (cleanReceiver === "FORT-ROAD-BAKERY" || cleanReceiver === "CANTEEN-QR-01") {
-      // Legit retail P2M QR purchase: Student buys food at shop. It stays at shop and does NOT route to hub!
-      generatedTx = [
-        {
-          sender: cleanSender,
-          receiver: cleanReceiver,
-          amount: numAmount,
-          channel: "upi",
-          is_p2m: true,
-          reference_id: txId,
-          event_type: "retail_qr_payment",
-        },
-      ];
-      setStatus(`🏪 Paid ₹${numAmount} directly to ${cleanReceiver} via UPI QR (Shop retail purchase).`);
-    } else if (cleanReceiver.includes("FAKE-ACC") || cleanReceiver.includes("MULE") || cleanReceiver.includes("ALT-ACC")) {
-      // Direct transfer to mule account -> immediately forwarded to hub
+    if (isMule) {
+      // Mule account transfer -> forward to cashout hub
       generatedTx = [
         { sender: cleanSender, receiver: cleanReceiver, amount: numAmount, channel: "upi", is_p2m: false, reference_id: txId, event_type: "mule_deposit" },
         { sender: cleanReceiver, receiver: "MAIN-CASHOUT-HUB", amount: numAmount, channel: "transfer", is_p2m: false, reference_id: `${txId}-FWD`, event_type: "hub_transfer" },
       ];
-      setStatus(`⚡ Sent ₹${numAmount} to ${cleanReceiver} -> routed into Main Cashout Hub.`);
+      setStatus(`⚡ Sent ₹${numAmount} from ${cleanSender} to ${cleanReceiver} (auto-forwarded to Cashout Hub).`);
     } else {
-      // Standard P2P transfer (e.g. to student friend) -> stays with recipient, does NOT route to hub!
+      // Clean Direct Transfer between cleanSender and cleanReceiver
       generatedTx = [
         {
           sender: cleanSender,
           receiver: cleanReceiver,
           amount: numAmount,
-          channel: "upi",
-          is_p2m: false,
+          channel: isRetail ? "upi" : (bankAccount === "sbi" ? "upi" : "transfer"),
+          is_p2m: isRetail,
           reference_id: txId,
-          event_type: "peer_transfer",
+          event_type: isRetail ? "retail_qr_payment" : "direct_transfer",
         },
       ];
-      setStatus(`💸 Sent ₹${numAmount} to ${cleanReceiver}.`);
+      setStatus(`💸 Transferred ₹${numAmount} from ${cleanSender} to ${cleanReceiver}.`);
     }
 
     await new Promise((r) => setTimeout(r, 450));
@@ -1236,7 +1104,7 @@ export default function PayDemo({
                 <small>Camera / Gallery</small>
               </button>
 
-              <button className="gpay-tile-btn" onClick={() => setShowPaySheet(true)}>
+              <button className="gpay-tile-btn" onClick={() => { setRecipientName(""); setRecipient(""); setShowPaySheet(true); }}>
                 <div className="tile-icon-circle green">
                   <Wallet size={24} />
                 </div>
@@ -1313,7 +1181,7 @@ export default function PayDemo({
 
                 <div
                   className="contact-bubble add"
-                  onClick={() => setShowPaySheet(true)}
+                  onClick={() => { setRecipientName(""); setRecipient(""); setShowPaySheet(true); }}
                   role="button"
                   tabIndex={0}
                 >
@@ -1635,23 +1503,86 @@ export default function PayDemo({
               <ShieldCheck size={18} className="text-google-blue" />
             </div>
 
-            <div className="sheet-payee-card">
-              <div className="payee-avatar-circle">
-                {recipientName.slice(0, 1)}
-              </div>
-              <div className="payee-info-col">
-                <h5>{recipientName}</h5>
-                <div className="payee-handle-row">
-                  <span>{recipient}</span>
-                  <span className="verified-chip"><Check size={10} /> Verified Merchant</span>
+            <div className="sheet-payee-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "8px", background: "#f8fafc", padding: "12px", borderRadius: "14px", border: "1px solid #e2e8f0" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div className="payee-avatar-circle" style={{ flexShrink: 0 }}>
+                  {(recipientName || recipient || "P").slice(0, 1).toUpperCase()}
                 </div>
-                <small className="banking-legal-name">Banking Name: {recipientName.toUpperCase()} PVT LTD</small>
+                <div className="payee-info-col" style={{ flex: 1 }}>
+                  <label className="section-micro-label" style={{ display: "block", marginBottom: "2px", color: "#64748b", fontSize: "10px", fontWeight: "700" }}>PAY TO (RECEIVER)</label>
+                  <input
+                    type="text"
+                    className="payee-input-field"
+                    placeholder="Enter Recipient Name or UPI ID"
+                    value={recipientName}
+                    onChange={(e) => {
+                      setRecipientName(e.target.value);
+                      setRecipient(e.target.value);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "7px 10px",
+                      background: "#fff",
+                      border: "1.5px solid #cbd5e1",
+                      borderRadius: "8px",
+                      fontWeight: "600",
+                      fontSize: "14px",
+                      color: "#0f172a",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "2px", alignItems: "center" }}>
+                <span style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "600", whiteSpace: "nowrap" }}>Quick Pick:</span>
+                {RECENT_CONTACTS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      sounds.playClick();
+                      setRecipient(c.handle);
+                      setRecipientName(c.name);
+                    }}
+                    style={{
+                      padding: "4px 9px",
+                      fontSize: "11px",
+                      borderRadius: "6px",
+                      border: (recipient === c.handle || recipientName === c.name) ? "1.5px solid #0284c7" : "1px solid #e2e8f0",
+                      background: (recipient === c.handle || recipientName === c.name) ? "#e0f2fe" : "#ffffff",
+                      color: (recipient === c.handle || recipientName === c.name) ? "#0369a1" : "#475569",
+                      fontWeight: "600",
+                      whiteSpace: "nowrap",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {c.name.split(" ")[0]}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* SELECT WHICH STUDENT IS GIVING CASH */}
-            <div className="sheet-student-choice-box">
-              <label className="section-micro-label">SELECT STUDENT GIVER</label>
+            {/* SENDER INPUT & QUICK CHIPS */}
+            <div className="sheet-student-choice-box" style={{ background: "#f8fafc", padding: "12px", borderRadius: "14px", border: "1px solid #e2e8f0", marginTop: "10px" }}>
+              <label className="section-micro-label" style={{ display: "block", marginBottom: "4px", color: "#64748b", fontSize: "10px", fontWeight: "700" }}>PAY FROM (SENDER)</label>
+              <input
+                type="text"
+                placeholder="Enter Sender Name / Account (e.g. Student 14, Alice, Self)"
+                value={sender}
+                onChange={(e) => setSender(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "7px 10px",
+                  background: "#fff",
+                  border: "1.5px solid #cbd5e1",
+                  borderRadius: "8px",
+                  fontWeight: "600",
+                  fontSize: "13px",
+                  color: "#0f172a",
+                  marginBottom: "8px",
+                  outline: "none",
+                }}
+              />
               <div className="student-choice-chips-row">
                 {DEMO_STUDENT_PROFILES.map((st) => (
                   <button
@@ -1661,12 +1592,9 @@ export default function PayDemo({
                     onClick={() => {
                       sounds.playClick();
                       setSender(st.id);
-                      setAmount(String(st.amount));
-                      setNote(`Student cash handover (${money(st.amount)})`);
                     }}
                   >
                     <span className="stu-chip-id">{st.id.replace("STUDENT-", "Stu ")}</span>
-                    <span className="stu-chip-amt">{money(st.amount)}</span>
                   </button>
                 ))}
               </div>
